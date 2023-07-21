@@ -35,7 +35,7 @@ struct Chunker {
 }
 
 impl Chunker {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Chunker {
             matrix_h: Chunker::generate_matrix(),
             matrix_g: Chunker::generate_matrix(),
@@ -60,46 +60,47 @@ impl Chunker {
     }
 
     fn is_window_qualified(&self, window: &[u8]) -> bool {
-        let input: Vec<Vec<bool>> = (0..5)
+        let input = (0..5)
             .map(|index| window[WINDOW_SIZE - index * WINDOW_MATRIX_SHIFT]) // get elements
             .map(byte_to_bits)
             .collect();
 
-        let positive_one = self.matrix_h.iter().enumerate()
-            .map(|(index, matrix_row)| multiply_rows(&input[index % 5], matrix_row))
-            .filter(|number| *number > 0.0)
-            .count();
+        let positive_one = self.transform_input(&input, &self.matrix_h);
+        let positive_two = self.transform_input(&input, &self.matrix_g);
 
-        let positive_two = self.matrix_g.iter().enumerate()
-            .map(|(index, matrix_row)| multiply_rows(&input[index % 5], matrix_row))
-            .filter(|number| *number > 0.0)
-            .count();
+        return positive_one % 2 == 1 || positive_two % 2 == 1
+    }
 
-        return !(positive_one % 2 == 0 && positive_two % 2 == 0)
+    fn transform_input(&self, input: &Vec<Vec<bool>>, matrix: &Vec<Vec<f64>>) -> usize {
+        matrix.iter().enumerate()
+            .map(|(index, matrix_row)| Chunker::multiply_rows(&input[index % 5], matrix_row))
+            .map(|row| row.iter().sum())
+            .filter(|number: &f64| *number > 0.0)
+            .count()
+    }
+
+    fn multiply_rows(row_1: &[bool], row_2: &[f64]) -> Vec<f64> {
+        row_1
+            .iter()
+            .zip(row_2.iter())
+            .map(|(sign, number)| if *sign { *number } else { -(*number) })
+            .collect()
     }
 }
 
 fn byte_to_bits(number: u8) -> Vec<bool> {
     (0..8)
+        .rev()
         .map(|n| if (number >> n) & 1 == 1 { true } else { false })
         .collect()
 }
 
-fn multiply_rows(row_1: &[bool], row_2: &[f64]) -> f64 {
-    row_1
-        .iter()
-        .zip(row_2.iter())
-        .map(|(sign, number)| if *sign { *number } else { -(*number) })
-        .sum()
-}
-
 fn generate_chunks(data: &[u8]) -> Vec<Chunk> {
     let mut chunks = vec![];
+    let chunker = Chunker::new();
 
     let mut chunk_start = 0;
     let mut index = MIN_CHUNK_SIZE;
-
-    let chunker = Chunker::new();
 
     while index < data.len() {
         match chunker.is_point_satisfied(index, data) {
@@ -113,4 +114,26 @@ fn generate_chunks(data: &[u8]) -> Vec<Chunk> {
     }
 
     chunks
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::leap_based::*;
+
+    fn num_to_bool(value: &str) -> Vec<bool> {
+        value.chars().map(|x| x == '1').collect()
+    }
+
+    #[test]
+    fn byte_to_bits_test() {
+        assert_eq!(byte_to_bits(194), num_to_bool("11000010"));
+        assert_eq!(byte_to_bits(53), num_to_bool("00110101"))
+    }
+
+    #[test]
+    fn multiply_rows_test() {
+        let row_1 = [true, false, false, true];
+        let row_2 = [3.2, 8.8, -2.1, -7.4];
+        assert_eq!(Chunker::multiply_rows(&row_1, &row_2), [3.2, -8.8, 2.1, -7.4]);
+    }
 }
