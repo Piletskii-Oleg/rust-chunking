@@ -8,6 +8,7 @@ const MAX_CHUNK_SIZE: usize = 12288; // 12 KB
 
 const WINDOW_SIZE: usize = 128;
 const WINDOW_COUNT: usize = 24;
+const WINDOW_EXTRA_COUNT: usize = 2;
 const WINDOW_MATRIX_SHIFT: usize = 26; // WINDOW_MATRIX_SHIFT * 4 < WINDOW_SIZE - 5
 
 const MATRIX_WIDTH: usize = 8;
@@ -103,6 +104,12 @@ fn generate_chunks(data: &[u8]) -> Vec<Chunk> {
     let mut index = MIN_CHUNK_SIZE;
 
     while index < data.len() {
+        if index - chunk_start > MAX_CHUNK_SIZE {
+            chunks.push(Chunk::new(chunk_start, index - chunk_start));
+            chunk_start = index;
+            index += MIN_CHUNK_SIZE;
+        }
+
         match chunker.is_point_satisfied(index, data) {
             PointStatus::Ok => {
                 chunks.push(Chunk::new(chunk_start, index - chunk_start));
