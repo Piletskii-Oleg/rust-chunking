@@ -9,8 +9,8 @@ const WINDOW_PRIMARY_COUNT: usize = 22;
 const WINDOW_SECONDARY_COUNT: usize = 2;
 const WINDOW_COUNT: usize = WINDOW_PRIMARY_COUNT + WINDOW_SECONDARY_COUNT;
 
-const WINDOW_SIZE: usize = 128;
-const WINDOW_MATRIX_SHIFT: usize = 24; // WINDOW_MATRIX_SHIFT * 4 < WINDOW_SIZE - 5
+const WINDOW_SIZE: usize = 192;
+const WINDOW_MATRIX_SHIFT: usize = 42; // WINDOW_MATRIX_SHIFT * 4 < WINDOW_SIZE - 5
 const MATRIX_WIDTH: usize = 8;
 const MATRIX_HEIGHT: usize = 255;
 
@@ -89,18 +89,15 @@ impl Chunker {
     }
 
     fn transform_input(&self, input: &[u8], matrix: &[Vec<f64>]) -> usize {
-        matrix.iter()
-            .map(|matrix_row| Chunker::multiply_rows(input, matrix_row))
+        matrix.iter().enumerate()
+            .map(|(index, matrix_row)| Chunker::multiply_rows(input[index % 5], matrix_row))
             .filter(|number| *number > 0.0)
             .count()
     }
 
-    fn multiply_rows(bytes: &[u8], numbers: &[f64]) -> f64 {
-        bytes
-            .iter()
-            .zip(numbers.iter())
-            .enumerate()
-            .map(|(index, (byte, number))| if (*byte >> index) & 1 == 1 {*number} else {-(*number)})
+    fn multiply_rows(byte: u8, numbers: &[f64]) -> f64 {
+        numbers.iter().enumerate()
+            .map(|(index, number)| if (byte >> index) & 1 == 1 {*number} else {-(*number)})
             .sum()
     }
 }
@@ -139,7 +136,7 @@ pub fn generate_chunks(chunker: &Chunker, data: &[u8]) -> Vec<Chunk> {
     if index >= data.len() {
         index = data.len();
         chunks.push(Chunk::new(chunk_start, index - chunk_start));
-        assert_eq!(chunks[chunks.len() - 1].pos + chunks[chunks.len() - 1].len, 6600000)
+        assert_eq!(chunks[chunks.len() - 1].pos + chunks[chunks.len() - 1].len, data.len())
     }
 
     chunks

@@ -8,13 +8,14 @@ fn main() {
     let to_chunk: Vec<u8> = generate_data(6600000);
     println!("Generated data in {:?}. Calculating chunks...", now.elapsed());
 
-    let now = Instant::now();
     let chunker = Chunker::new();
-    let chunks = generate_chunks(&chunker, &to_chunk);
 
-    println!("{:?}", now.elapsed());
+    let now = Instant::now();
+    let chunks = generate_chunks(&chunker, &to_chunk);
+    println!("Calculated in {:?}", now.elapsed());
+
     let lens: usize = chunks.iter().map(|chunk| chunk.len).sum();
-    println!("Average len: {}", lens / chunks.len());
+    println!("Average len: {} bytes", lens / chunks.len());
 }
 
 fn generate_data(size: usize) -> Vec<u8> {
