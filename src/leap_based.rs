@@ -34,14 +34,61 @@ impl Chunk {
 pub struct Chunker {
     matrix_h: Vec<Vec<f64>>,
     matrix_g: Vec<Vec<f64>>,
+    ef_matrix: Vec<Vec<u8>>
 }
 
 impl Chunker {
     pub fn new() -> Self {
+        let base_matrix = (0..=255)
+            .map(|index| vec![index; 5])
+            .collect::<Vec<Vec<u8>>>();
+
+        let matrix_h = Chunker::generate_matrix();
+        let matrix_g = Chunker::generate_matrix();
+
+        let e_matrix = base_matrix.iter()
+            .map(|row| Chunker::get_eis_from_byte_row(row[0].clone(), &matrix_h))
+            .collect::<Vec<Vec<bool>>>();
+        let f_matrix = base_matrix.iter()
+            .map(|row| Chunker::get_eis_from_byte_row(row[0].clone(), &matrix_g))
+            .collect::<Vec<Vec<bool>>>();
+
+        let ef_matrix = e_matrix.iter().zip(f_matrix.iter())
+            .map(Chunker::concatenate_bits_in_rows)
+            .collect();
+
         Chunker {
             matrix_h: Chunker::generate_matrix(),
             matrix_g: Chunker::generate_matrix(),
+            ef_matrix
         }
+    }
+
+    fn concatenate_bits_in_rows((row_x, row_y): (&Vec<bool>, &Vec<bool>)) -> Vec<u8> {
+        row_x.iter().zip(row_y.iter())
+            .map(Chunker::concatenate_bits)
+            .collect()
+    }
+
+    fn concatenate_bits((x, y): (&bool, &bool)) -> u8 {
+        match (*x, *y) {
+            (true, true) => 3,
+            (true, false) => 2,
+            (false, true) => 1,
+            (false, false) => 0,
+        }
+    }
+
+    fn get_eis_from_byte_row(byte: u8, matrix: &[Vec<f64>]) -> Vec<bool> {
+        let mut new_row = vec![0u8; 5];
+        (0..255)
+            .map(|index| Chunker::multiply_rows(byte, &matrix[index]))
+            .enumerate()
+            .for_each(|(index, value)| if value > 0.0 { new_row[index / 51] += 1; });
+
+        new_row.iter()
+            .map(|&number| if number % 2 == 0 {false} else {true})
+            .collect::<Vec<bool>>()
     }
 
     fn generate_matrix() -> Vec<Vec<f64>> {
@@ -80,19 +127,11 @@ impl Chunker {
     }
 
     fn is_window_qualified(&self, window: &[u8]) -> bool {
-        let input = (0..5)
-            .map(|index| window[WINDOW_SIZE - 1 - index * WINDOW_MATRIX_SHIFT]) // init array
-            .collect::<Vec<u8>>();
-
-        self.transform_input(&input, &self.matrix_h) % 2 == 1 ||
-            self.transform_input(&input, &self.matrix_g) % 2 == 1
-    }
-
-    fn transform_input(&self, input: &[u8], matrix: &[Vec<f64>]) -> usize {
-        matrix.iter().enumerate()
-            .map(|(index, matrix_row)| Chunker::multiply_rows(input[index % 5], matrix_row))
-            .filter(|number| *number > 0.0)
-            .count()
+        (0..5)
+            .map(|index| window[WINDOW_SIZE - 1 - index * WINDOW_MATRIX_SHIFT])
+            .enumerate()
+            .map(|(index, byte)| self.ef_matrix[byte as usize][index])// init array
+            .fold(0, |acc, value| acc ^ (value as usize)) != 0
     }
 
     fn multiply_rows(byte: u8, numbers: &[f64]) -> f64 {

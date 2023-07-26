@@ -7,7 +7,7 @@ mod quick;
 
 fn main() {
     let now = Instant::now();
-    let to_chunk: Vec<u8> = generate_data(6000000);
+    let to_chunk: Vec<u8> = generate_data(512 * 1024 * 1024 * 2);
     println!("Generated data ({} bytes) in {:?}. Calculating chunks...", to_chunk.len(), now.elapsed());
 
     let chunker = Chunker::new();
