@@ -6,20 +6,24 @@ mod leap_based;
 mod quick;
 
 fn main() {
+    const DATA_SIZE: usize = 1024 * 1024 * 1024 * 2;
     let now = Instant::now();
-    let to_chunk: Vec<u8> = generate_data(512 * 1024 * 1024 * 2);
+    let to_chunk: Vec<u8> = generate_data(DATA_SIZE);
     println!("Generated data ({} bytes) in {:?}. Calculating chunks...", to_chunk.len(), now.elapsed());
 
     let chunker = Chunker::new();
 
     let now = Instant::now();
     let chunks = generate_chunks(&chunker, &to_chunk);
-    println!("Calculated in {:?}", now.elapsed());
+    let time = now.elapsed();
+    println!("Calculated in {:?}", time);
 
     let lens = chunks.iter().map(|chunk| chunk.len).collect::<Vec<usize>>();
     println!("Average len: {} bytes", lens.iter().sum::<usize>() / chunks.len());
     println!("Median: {} bytes", lens[lens.len() / 2]);
     println!("Mode: {} bytes", mode(&lens));
+
+    println!("Speed: {} MB/s", DATA_SIZE / time.as_millis() as usize / 1024)
 }
 
 fn generate_data(size: usize) -> Vec<u8> {

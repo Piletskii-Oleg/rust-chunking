@@ -2,14 +2,14 @@ use rand::prelude::ThreadRng;
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 
-const MIN_CHUNK_SIZE: usize = 4096; // 4 KB
-const MAX_CHUNK_SIZE: usize = 12288; // 12 KB
+const MIN_CHUNK_SIZE: usize = 1024 * 8;
+const MAX_CHUNK_SIZE: usize = 1024 * 16;
 
 const WINDOW_PRIMARY_COUNT: usize = 22;
 const WINDOW_SECONDARY_COUNT: usize = 2;
 const WINDOW_COUNT: usize = WINDOW_PRIMARY_COUNT + WINDOW_SECONDARY_COUNT;
 
-const WINDOW_SIZE: usize = 192;
+const WINDOW_SIZE: usize = 180;
 const WINDOW_MATRIX_SHIFT: usize = 42; // WINDOW_MATRIX_SHIFT * 4 < WINDOW_SIZE - 5
 const MATRIX_WIDTH: usize = 8;
 const MATRIX_HEIGHT: usize = 255;
@@ -32,8 +32,6 @@ impl Chunk {
 }
 
 pub struct Chunker {
-    matrix_h: Vec<Vec<f64>>,
-    matrix_g: Vec<Vec<f64>>,
     ef_matrix: Vec<Vec<u8>>
 }
 
@@ -41,27 +39,25 @@ impl Chunker {
     pub fn new() -> Self {
         let base_matrix = (0..=255)
             .map(|index| vec![index; 5])
-            .collect::<Vec<Vec<u8>>>();
+            .collect::<Vec<Vec<u8>>>(); // 256x5 matrix that looks like ((0,0,0,0,0), (1,1,1,1,1)..)
 
         let matrix_h = Chunker::generate_matrix();
         let matrix_g = Chunker::generate_matrix();
 
-        let e_matrix = base_matrix.iter()
-            .map(|row| Chunker::get_eis_from_byte_row(row[0].clone(), &matrix_h))
-            .collect::<Vec<Vec<bool>>>();
-        let f_matrix = base_matrix.iter()
-            .map(|row| Chunker::get_eis_from_byte_row(row[0].clone(), &matrix_g))
-            .collect::<Vec<Vec<bool>>>();
+        let e_matrix = Chunker::transform_base_matrix(&base_matrix, &matrix_h);
+        let f_matrix = Chunker::transform_base_matrix(&base_matrix, &matrix_g);
 
         let ef_matrix = e_matrix.iter().zip(f_matrix.iter())
             .map(Chunker::concatenate_bits_in_rows)
             .collect();
 
-        Chunker {
-            matrix_h: Chunker::generate_matrix(),
-            matrix_g: Chunker::generate_matrix(),
-            ef_matrix
-        }
+        Chunker { ef_matrix }
+    }
+
+    fn transform_base_matrix(base_matrix: &[Vec<u8>], additional_matrix: &[Vec<f64>]) -> Vec<Vec<bool>> {
+        base_matrix.iter()
+            .map(|row| Chunker::transform_byte_row(row[0], additional_matrix))
+            .collect::<Vec<Vec<bool>>>()
     }
 
     fn concatenate_bits_in_rows((row_x, row_y): (&Vec<bool>, &Vec<bool>)) -> Vec<u8> {
@@ -79,7 +75,7 @@ impl Chunker {
         }
     }
 
-    fn get_eis_from_byte_row(byte: u8, matrix: &[Vec<f64>]) -> Vec<bool> {
+    fn transform_byte_row(byte: u8, matrix: &[Vec<f64>]) -> Vec<bool> {
         let mut new_row = vec![0u8; 5];
         (0..255)
             .map(|index| Chunker::multiply_rows(byte, &matrix[index]))
@@ -89,6 +85,12 @@ impl Chunker {
         new_row.iter()
             .map(|&number| if number % 2 == 0 {false} else {true})
             .collect::<Vec<bool>>()
+    }
+
+    fn multiply_rows(byte: u8, numbers: &[f64]) -> f64 {
+        numbers.iter().enumerate()
+            .map(|(index, number)| if (byte >> index) & 1 == 1 {*number} else {-(*number)})
+            .sum()
     }
 
     fn generate_matrix() -> Vec<Vec<f64>> {
@@ -128,16 +130,11 @@ impl Chunker {
 
     fn is_window_qualified(&self, window: &[u8]) -> bool {
         (0..5)
-            .map(|index| window[WINDOW_SIZE - 1 - index * WINDOW_MATRIX_SHIFT])
+            .map(|index| window[WINDOW_SIZE - 1 - index * WINDOW_MATRIX_SHIFT]) // init array
             .enumerate()
-            .map(|(index, byte)| self.ef_matrix[byte as usize][index])// init array
-            .fold(0, |acc, value| acc ^ (value as usize)) != 0
-    }
-
-    fn multiply_rows(byte: u8, numbers: &[f64]) -> f64 {
-        numbers.iter().enumerate()
-            .map(|(index, number)| if (byte >> index) & 1 == 1 {*number} else {-(*number)})
-            .sum()
+            .map(|(index, byte)| self.ef_matrix[byte as usize][index]) // get elements from ef_matrix
+            .fold(0, |acc, value| acc ^ (value as usize)) // why is acc of type usize?
+            != 0
     }
 }
 
