@@ -1,6 +1,7 @@
 use rand::prelude::ThreadRng;
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
+use crate::Chunk;
 
 const MIN_CHUNK_SIZE: usize = 1024 * 8;
 const MAX_CHUNK_SIZE: usize = 1024 * 16;
@@ -17,18 +18,6 @@ const MATRIX_HEIGHT: usize = 255;
 enum PointStatus {
     Ok,
     Unsatisfied(usize),
-}
-
-#[derive(Debug)]
-pub struct Chunk {
-    pub(super) pos: usize,
-    pub(super) len: usize,
-}
-
-impl Chunk {
-    fn new(pos: usize, len: usize) -> Self {
-        Chunk { pos, len }
-    }
 }
 
 pub struct Chunker {

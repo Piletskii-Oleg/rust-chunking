@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use std::time::Instant;
-use crate::leap_based::{Chunker, generate_chunks};
-
-mod leap_based;
-mod quick;
+use chunking::leap_based::{Chunker, generate_chunks};
 
 fn main() {
     const DATA_SIZE: usize = 1024 * 1024 * 1024 * 2;

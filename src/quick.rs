@@ -5,6 +5,7 @@ use std::ptr;
 use std::usize::MIN;
 
 use serde::{Deserialize, Serialize};
+use crate::Chunk;
 
 // copied from https://github.com/zboxfs/zbox
 
@@ -38,18 +39,6 @@ const KB: usize = 1024;
 const FRONT_LENGTH: usize = 3;
 const END_LENGTH: usize = 3;
 const JUMP_LENGTH: usize = 8 * KB;
-
-#[derive(Debug)]
-pub struct Chunk {
-    pub(super) pos: usize,
-    pub(super) len: usize,
-}
-
-impl Chunk {
-    fn new(pos: usize, len: usize) -> Self {
-        Chunk { pos, len }
-    }
-}
 
 /// Pre-calculated chunker parameters
 #[derive(Clone, Deserialize, Serialize)]
