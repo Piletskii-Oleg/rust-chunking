@@ -21,9 +21,7 @@ enum HammingError {
 
 pub struct Chunker {
     out_window: [u8; WINDOW_SIZE],
-    out_window_idx: usize,
     in_window: [u8; WINDOW_SIZE],
-    in_window_idx: usize,
     distance_map: Vec<Vec<usize>>,
     normal_size: usize,
     start: usize,
@@ -52,9 +50,7 @@ impl Chunker {
     pub fn new() -> Self {
         Self {
             out_window: [0u8; WINDOW_SIZE],
-            out_window_idx: MIN_CHUNK_SIZE,
             in_window: [0u8; WINDOW_SIZE],
-            in_window_idx: 0,
             distance_map: distance_map(),
             normal_size: NORMAL_CHUNK_SIZE,
             start: 0,
@@ -101,9 +97,8 @@ impl Chunker {
 
         self.out_window
             .copy_from_slice(&data[self.start..self.start + 8]);
-        self.out_window_idx = self.start + 8;
-
         self.chk_len += 8;
+        self.calculate_new_distance();
 
         if let Some(chunk) = self.try_get_chunk(data, self.normal_size, MASK_S) {
             return chunk;
@@ -122,9 +117,8 @@ impl Chunker {
                 return Some(chunk);
             }
 
-            self.in_window_idx = self.start + self.chk_len + 8;
             self.in_window
-                .copy_from_slice(&data[self.in_window_idx - 8..self.in_window_idx]);
+                .copy_from_slice(&data[self.start + self.chk_len..self.start + self.chk_len + 8]);
 
             if self.in_window == self.out_window {
                 self.equal_window_count += 1;
@@ -136,34 +130,38 @@ impl Chunker {
                 }
             }
 
-            self.calculate_distance();
-
             self.equal_window_count = 0;
-            for j in 0..8 {
-                if (self.distance & mask) == 0 {
-                    return Some(self.make_chunk(8));
-                }
-                self.slide_one_byte(data, j);
+            if let Some(chunk) = self.try_extract(mask) {
+                return Some(chunk);
             }
 
-            self.out_window.copy_from_slice(&self.in_window[..]);
-            self.out_window_idx = self.in_window_idx;
+            self.out_window.copy_from_slice(&self.in_window);
             self.chk_len += 8;
         }
         None
     }
 
-    fn calculate_distance(&mut self) {
+    fn try_extract(&mut self, mask: usize) -> Option<Chunk> {
+        for j in 0..8 {
+            if (self.distance & mask) == 0 {
+                return Some(self.make_chunk(8));
+            }
+            self.slide_one_byte(j);
+        }
+        None
+    }
+
+    fn calculate_new_distance(&mut self) {
         self.distance = self
             .out_window
             .iter()
-            .map(|&byte| self.distance_map[0xAA][byte as usize])
+            .map(|&byte| self.distance_map[BYTE][byte as usize])
             .sum();
     }
 
-    fn slide_one_byte(&mut self, data: &[u8], index: usize) {
+    fn slide_one_byte(&mut self, index: usize) {
         let old = self.out_window[index];
-        let new = data[self.out_window_idx + index];
+        let new = self.in_window[index];
 
         self.distance += self.distance_map[BYTE][new as usize];
         self.distance -= self.distance_map[BYTE][old as usize];
@@ -192,23 +190,5 @@ impl Chunker {
         } else {
             None
         }
-    }
-}
-
-fn byte_to_hex(byte: u8) -> String {
-    format!("{:02X}", byte)
-}
-
-fn hamming_distance(str1: &str, str2: &str) -> Result<usize, HammingError> {
-    if str1.len() != str2.len() {
-        Err(HammingError::DifferentLength)
-    } else {
-        let same = str1
-            .chars()
-            .zip(str2.chars())
-            .filter(|&(a, b)| a == b)
-            .count();
-
-        Ok(str1.len() - same)
     }
 }

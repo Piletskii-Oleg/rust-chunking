@@ -1,7 +1,7 @@
-use chunking::ultra;
+use chunking::{Chunk, ultra};
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 fn main() {
     test_chunker();
@@ -24,6 +24,10 @@ fn test_chunker() {
     let now = Instant::now();
     let chunks = chunker.generate_chunks(&buf);
     let time = now.elapsed();
+
+    let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
+    assert_eq!(total_len, buf.len());
+
     println!(
         "Chunked file with size {}MB in {:?}",
         buf.len() / 1024 / 1024,
@@ -43,9 +47,12 @@ fn test_chunker() {
         buf.len() / time.as_millis() as usize / 1024
     );
 
-    let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
-    assert_eq!(total_len, buf.len());
+    // Спросить у Ростислава подходящие датасеты
 
+    dedup_info(&buf, chunks);
+}
+
+fn dedup_info(buf: &Vec<u8>, chunks: Vec<Chunk>) {
     let chunks_len = chunks.len();
     let chunks_map: HashMap<_, usize> = HashMap::from_iter(chunks.into_iter().map(|chunk| {
         let hash = Sha3_256::digest(&buf[chunk.pos..chunk.pos + chunk.len]);
