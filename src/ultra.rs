@@ -113,8 +113,8 @@ impl Chunker {
         let len = self.chk_len;
         let pos = self.start;
 
-        self.start += self.chk_len;
-        self.chk_len = 0;
+        self.start += self.chk_len + MIN_CHUNK_SIZE;
+        self.chk_len = MIN_CHUNK_SIZE;
 
         Chunk::new(pos, len)
     }
@@ -134,7 +134,8 @@ impl Chunker {
 
             self.in_window
                 .copy_from_slice(&data[self.start + self.chk_len..self.start + self.chk_len + 8]);
-            if self.windows_are_same() {
+
+            if self.in_window == self.out_window {
                 self.equal_window_count += 1;
                 if self.equal_window_count == LEST {
                     self.chk_len += 8;
@@ -142,8 +143,8 @@ impl Chunker {
                     let len = self.chk_len;
                     let pos = self.start;
 
-                    self.start += self.chk_len;
-                    self.chk_len = 0;
+                    self.start += self.chk_len + MIN_CHUNK_SIZE;
+                    self.chk_len = MIN_CHUNK_SIZE;
 
                     return Some(Chunk::new(pos, len));
                 } else {
@@ -160,8 +161,9 @@ impl Chunker {
                     let pos = self.start;
                     let len = self.chk_len;
 
-                    self.start += self.chk_len;
-                    self.chk_len = 0;
+                    self.start += self.chk_len + MIN_CHUNK_SIZE;
+                    self.chk_len = MIN_CHUNK_SIZE;
+
                     return Some(Chunk::new(pos, len));
                 }
                 self.slide_one_byte(data, j);
@@ -184,15 +186,6 @@ impl Chunker {
 
         self.distance += self.distance_map[BYTE][new as usize];
         self.distance -= self.distance_map[BYTE][old as usize];
-    }
-
-    fn windows_are_same(&self) -> bool {
-        self.out_window
-            .iter()
-            .zip(self.in_window.iter())
-            .filter(|(a, b)| **a == **b)
-            .count()
-            == WINDOW_SIZE
     }
 }
 
