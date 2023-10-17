@@ -1,9 +1,7 @@
-use chunking::leap_based::{generate_chunks, Chunker};
-use chunking::{Chunk, ultra};
+use chunking::{ultra};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::time::Instant;
+use sha3::{Sha3_256, Digest};
 
 fn main() {
     test_chunker();
@@ -42,14 +40,19 @@ fn test_chunker() {
     );
 
     let chunks_len = chunks.len();
-    let chunks_map: HashMap<Chunk, usize> = HashMap::from_iter(
-        chunks.into_iter().map(|chunk| { (chunk.clone(), chunk.len)})
+    let chunks_map: HashMap<_, usize> = HashMap::from_iter(
+        chunks.into_iter().map(|chunk| {
+            let hash = Sha3_256::digest(&buf[chunk.pos..chunk.pos + chunk.len]);
+            let mut res = vec![0u8; hash.len()];
+            res.copy_from_slice(&hash);
+            (res, chunk.len)
+        })
     );
-    println!("Chunk ratio: {} / {} = {}", chunks_map.len(), chunks_len, chunks_map.len() / chunks_len);
-    println!("Data size ratio: {} / {} = {}",
+    println!("Chunk ratio: {} / {} = {:.3}", chunks_map.len(), chunks_len, chunks_map.len() as f64 / chunks_len as f64);
+    println!("Data size ratio: {} / {} = {:.3}",
     chunks_map.iter().map(|(a, &b)| b).sum::<usize>(),
     buf.len(),
-             chunks_map.iter().map(|(a, &b)| b).sum::<usize>() / buf.len());
+             chunks_map.iter().map(|(a, &b)| b).sum::<usize>() as f64 / buf.len() as f64);
 }
 
 fn generate_data(size: usize) -> Vec<u8> {
