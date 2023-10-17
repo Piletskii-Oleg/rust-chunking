@@ -17,7 +17,7 @@ fn test_chunker() {
     //     now.elapsed()
     // );
 
-    let buf = std::fs::read("ubuntu.iso").unwrap();
+    let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
 
     let mut chunker = ultra::Chunker::new();
 
