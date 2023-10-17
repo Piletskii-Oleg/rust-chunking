@@ -17,7 +17,7 @@ fn test_chunker() {
     //     now.elapsed()
     // );
 
-    let buf = std::fs::read("discord-bot").unwrap();
+    let buf = std::fs::read("ubuntu.iso").unwrap();
 
     let mut chunker = ultra::Chunker::new();
 
@@ -43,6 +43,9 @@ fn test_chunker() {
         buf.len() / time.as_millis() as usize / 1024
     );
 
+    let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
+    assert_eq!(total_len, buf.len());
+
     let chunks_len = chunks.len();
     let chunks_map: HashMap<_, usize> = HashMap::from_iter(chunks.into_iter().map(|chunk| {
         let hash = Sha3_256::digest(&buf[chunk.pos..chunk.pos + chunk.len]);
@@ -51,7 +54,7 @@ fn test_chunker() {
         (res, chunk.len)
     }));
     println!(
-        "Chunk ratio: {} / {} = {:.3}",
+        "Chunk ratio (unique / all): {} / {} = {:.3}",
         chunks_map.len(),
         chunks_len,
         chunks_map.len() as f64 / chunks_len as f64

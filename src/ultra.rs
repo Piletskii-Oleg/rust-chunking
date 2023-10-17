@@ -62,7 +62,7 @@ impl Chunker {
             in_window: [0u8; WINDOW_SIZE],
             distance_map: distance_map(),
             normal_size: NORMAL_CHUNK_SIZE,
-            start: MIN_CHUNK_SIZE,
+            start: 0,
             chk_len: MIN_CHUNK_SIZE,
             distance: 0,
             equal_window_count: 0,
@@ -70,7 +70,7 @@ impl Chunker {
     }
 
     pub fn generate_chunks(&mut self, data: &[u8]) -> Vec<Chunk> {
-        let mut chunks = vec![];
+        let mut chunks: Vec<Chunk> = vec![];
         self.normal_size = NORMAL_CHUNK_SIZE;
         if data.len() <= MIN_CHUNK_SIZE {
             return vec![Chunk::new(0, data.len())];
@@ -82,6 +82,11 @@ impl Chunker {
 
         while self.start + self.chk_len < data.len() {
             let chunk = self.generate_chunk(data);
+
+            if chunks.len() > 0 {
+                let last = chunks.len() - 1;
+                assert_eq!(chunks[last].pos + chunks[last].len, chunk.pos);
+            }
             chunks.push(chunk);
         }
 
@@ -113,7 +118,7 @@ impl Chunker {
         let len = self.chk_len;
         let pos = self.start;
 
-        self.start += self.chk_len + MIN_CHUNK_SIZE;
+        self.start += self.chk_len;
         self.chk_len = MIN_CHUNK_SIZE;
 
         Chunk::new(pos, len)
@@ -137,7 +142,7 @@ impl Chunker {
                     let len = self.chk_len;
                     let pos = self.start;
 
-                    self.start += self.chk_len + MIN_CHUNK_SIZE;
+                    self.start += self.chk_len;
                     self.chk_len = MIN_CHUNK_SIZE;
 
                     return Some(Chunk::new(pos, len));
@@ -161,7 +166,7 @@ impl Chunker {
                     let pos = self.start;
                     let len = self.chk_len;
 
-                    self.start += self.chk_len + MIN_CHUNK_SIZE;
+                    self.start += self.chk_len;
                     self.chk_len = MIN_CHUNK_SIZE;
 
                     return Some(Chunk::new(pos, len));
