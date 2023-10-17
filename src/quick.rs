@@ -4,8 +4,8 @@ use std::io::{Result as IoResult, Seek, SeekFrom, Write};
 use std::ptr;
 use std::usize::MIN;
 
-use serde::{Deserialize, Serialize};
 use crate::Chunk;
+use serde::{Deserialize, Serialize};
 
 // copied from https://github.com/zboxfs/zbox
 
@@ -106,7 +106,7 @@ pub struct Chunker<W: Write + Seek> {
     win_idx: usize,
     roll_hash: u64,
     win: [u8; WINDOW_SIZE], // rolling hash circle window
-    buf: Vec<u8>,        // chunker buffer, fixed size: WTR_BUF_LEN
+    buf: Vec<u8>,           // chunker buffer, fixed size: WTR_BUF_LEN
 }
 
 impl<W: Write + Seek> Chunker<W> {
@@ -230,8 +230,7 @@ impl<W: Write + Seek> Write for Chunker<W> {
 
         let in_len = min(BUFFER_SIZE - self.buf_clen, buf.len());
         assert!(in_len > 0);
-        self.buf[self.buf_clen..self.buf_clen + in_len]
-            .copy_from_slice(&buf[..in_len]);
+        self.buf[self.buf_clen..self.buf_clen + in_len].copy_from_slice(&buf[..in_len]);
         self.buf_clen += in_len;
 
         while self.pos < self.buf_clen {

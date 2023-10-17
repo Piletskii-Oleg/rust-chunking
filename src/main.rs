@@ -1,32 +1,49 @@
+use chunking::leap_based::{generate_chunks, Chunker};
+use chunking::ultra;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
 use std::time::Instant;
-use chunking::leap_based::{Chunker, generate_chunks};
 
 fn main() {
-    const DATA_SIZE: usize = 1024 * 1024 * 1024 * 2;
-    let now = Instant::now();
-    let to_chunk: Vec<u8> = generate_data(DATA_SIZE);
-    println!("Generated data ({} bytes) in {:?}. Calculating chunks...", to_chunk.len(), now.elapsed());
+    test_chunker();
+}
 
-    let chunker = Chunker::new();
+fn test_chunker() {
+    // const DATA_SIZE: usize = 1024 * 1024 * 100 * 2;
+    // let now = Instant::now();
+    // let to_chunk: Vec<u8> = generate_data(DATA_SIZE);
+    // println!(
+    //     "Generated data ({} bytes) in {:?}. Calculating chunks...",
+    //     to_chunk.len(),
+    //     now.elapsed()
+    // );
+
+    let buf = std::fs::read("discord-bot").unwrap();
+
+    let mut chunker = ultra::Chunker::new();
 
     let now = Instant::now();
-    let chunks = generate_chunks(&chunker, &to_chunk);
+    let chunks = chunker.generate_chunks(&buf);
     let time = now.elapsed();
-    println!("Calculated in {:?}", time);
+    println!("Chunked file with size {}MB in {:?}", buf.len() / 1024 / 1024, time);
 
     let lens = chunks.iter().map(|chunk| chunk.len).collect::<Vec<usize>>();
-    println!("Average len: {} bytes", lens.iter().sum::<usize>() / chunks.len());
+    println!(
+        "Average len: {} bytes",
+        lens.iter().sum::<usize>() / chunks.len()
+    );
     println!("Median: {} bytes", lens[lens.len() / 2]);
     println!("Mode: {} bytes", mode(&lens));
 
-    println!("Speed: {} MB/s", DATA_SIZE / time.as_millis() as usize / 1024)
+    println!(
+        "Speed: {} MB/s",
+        buf.len() / time.as_millis() as usize / 1024
+    )
 }
 
 fn generate_data(size: usize) -> Vec<u8> {
-    (0..size)
-        .map(|_| rand::random::<u8>())
-        .collect()
+    (0..size).map(|_| rand::random::<u8>()).collect()
 }
 
 fn mode(numbers: &[usize]) -> usize {

@@ -1,7 +1,7 @@
+use crate::Chunk;
 use rand::prelude::ThreadRng;
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
-use crate::Chunk;
 
 const MIN_CHUNK_SIZE: usize = 1024 * 8;
 const MAX_CHUNK_SIZE: usize = 1024 * 16;
@@ -21,7 +21,7 @@ enum PointStatus {
 }
 
 pub struct Chunker {
-    ef_matrix: Vec<Vec<u8>>
+    ef_matrix: Vec<Vec<u8>>,
 }
 
 impl Chunker {
@@ -36,21 +36,29 @@ impl Chunker {
         let e_matrix = Chunker::transform_base_matrix(&base_matrix, &matrix_h);
         let f_matrix = Chunker::transform_base_matrix(&base_matrix, &matrix_g);
 
-        let ef_matrix = e_matrix.iter().zip(f_matrix.iter())
+        let ef_matrix = e_matrix
+            .iter()
+            .zip(f_matrix.iter())
             .map(Chunker::concatenate_bits_in_rows)
             .collect();
 
         Chunker { ef_matrix }
     }
 
-    fn transform_base_matrix(base_matrix: &[Vec<u8>], additional_matrix: &[Vec<f64>]) -> Vec<Vec<bool>> {
-        base_matrix.iter()
+    fn transform_base_matrix(
+        base_matrix: &[Vec<u8>],
+        additional_matrix: &[Vec<f64>],
+    ) -> Vec<Vec<bool>> {
+        base_matrix
+            .iter()
             .map(|row| Chunker::transform_byte_row(row[0], additional_matrix))
             .collect::<Vec<Vec<bool>>>()
     }
 
     fn concatenate_bits_in_rows((row_x, row_y): (&Vec<bool>, &Vec<bool>)) -> Vec<u8> {
-        row_x.iter().zip(row_y.iter())
+        row_x
+            .iter()
+            .zip(row_y.iter())
             .map(Chunker::concatenate_bits)
             .collect()
     }
@@ -69,16 +77,29 @@ impl Chunker {
         (0..255)
             .map(|index| Chunker::multiply_rows(byte, &matrix[index]))
             .enumerate()
-            .for_each(|(index, value)| if value > 0.0 { new_row[index / 51] += 1; });
+            .for_each(|(index, value)| {
+                if value > 0.0 {
+                    new_row[index / 51] += 1;
+                }
+            });
 
-        new_row.iter()
-            .map(|&number| if number % 2 == 0 {false} else {true})
+        new_row
+            .iter()
+            .map(|&number| if number % 2 == 0 { false } else { true })
             .collect::<Vec<bool>>()
     }
 
     fn multiply_rows(byte: u8, numbers: &[f64]) -> f64 {
-        numbers.iter().enumerate()
-            .map(|(index, number)| if (byte >> index) & 1 == 1 {*number} else {-(*number)})
+        numbers
+            .iter()
+            .enumerate()
+            .map(|(index, number)| {
+                if (byte >> index) & 1 == 1 {
+                    *number
+                } else {
+                    -(*number)
+                }
+            })
             .sum()
     }
 
@@ -92,15 +113,14 @@ impl Chunker {
     }
 
     fn generate_row(normal: &Normal<f64>, rng: &mut ThreadRng) -> Vec<f64> {
-        (0..MATRIX_WIDTH)
-            .map(|_| normal.sample(rng))
-            .collect()
+        (0..MATRIX_WIDTH).map(|_| normal.sample(rng)).collect()
     }
 
     fn is_point_satisfied(&self, index: usize, data: &[u8]) -> PointStatus {
         // primary check, T<=x<M where T is WINDOW_SECONDARY_COUNT and M is WINDOW_COUNT
         for i in WINDOW_SECONDARY_COUNT..WINDOW_COUNT {
-            if !self.is_window_qualified(&data[index - i - WINDOW_SIZE..index - i]) { // window is WINDOW_SIZE bytes long and moves to the left
+            if !self.is_window_qualified(&data[index - i - WINDOW_SIZE..index - i]) {
+                // window is WINDOW_SIZE bytes long and moves to the left
                 let leap = WINDOW_COUNT - i;
                 return PointStatus::Unsatisfied(leap);
             }
@@ -139,7 +159,10 @@ pub fn generate_chunks(chunker: &Chunker, data: &[u8]) -> Vec<Chunk> {
             chunk_start = index;
             index += MIN_CHUNK_SIZE;
             if chunks.len() > 1 {
-                assert_eq!(chunks[chunks.len() - 2].pos + chunks[chunks.len() - 2].len, chunks.last().unwrap().pos);
+                assert_eq!(
+                    chunks[chunks.len() - 2].pos + chunks[chunks.len() - 2].len,
+                    chunks.last().unwrap().pos
+                );
             }
         } else {
             match chunker.is_point_satisfied(index, data) {
@@ -148,12 +171,15 @@ pub fn generate_chunks(chunker: &Chunker, data: &[u8]) -> Vec<Chunk> {
                     chunk_start = index;
                     index += MIN_CHUNK_SIZE;
                     if chunks.len() > 1 {
-                        assert_eq!(chunks[chunks.len() - 2].pos + chunks[chunks.len() - 2].len, chunks.last().unwrap().pos);
+                        assert_eq!(
+                            chunks[chunks.len() - 2].pos + chunks[chunks.len() - 2].len,
+                            chunks.last().unwrap().pos
+                        );
                     }
                 }
                 PointStatus::Unsatisfied(leap) => {
                     index += leap;
-                },
+                }
             };
         }
     }
@@ -161,7 +187,10 @@ pub fn generate_chunks(chunker: &Chunker, data: &[u8]) -> Vec<Chunk> {
     if index >= data.len() {
         index = data.len();
         chunks.push(Chunk::new(chunk_start, index - chunk_start));
-        assert_eq!(chunks[chunks.len() - 1].pos + chunks[chunks.len() - 1].len, data.len())
+        assert_eq!(
+            chunks[chunks.len() - 1].pos + chunks[chunks.len() - 1].len,
+            data.len()
+        )
     }
 
     chunks

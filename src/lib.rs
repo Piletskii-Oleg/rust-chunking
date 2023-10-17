@@ -3,7 +3,8 @@ pub mod quick;
 pub mod ultra;
 
 #[derive(Debug)]
-pub struct Chunk { // TODO: not pub
+pub struct Chunk {
+    // TODO: not pub
     pub pos: usize,
     pub len: usize,
 }
