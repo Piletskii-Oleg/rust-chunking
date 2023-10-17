@@ -126,12 +126,6 @@ impl Chunker {
                 return Some(Chunk::new(self.start, self.chk_len));
             }
 
-            self.distance = self
-                .out_window
-                .iter()
-                .map(|&byte|  self.distance_map[0xAA][byte as usize])
-                .sum();
-
             self.in_window
                 .copy_from_slice(&data[self.start + self.chk_len..self.start + self.chk_len + 8]);
 
@@ -152,6 +146,12 @@ impl Chunker {
                     continue;
                 }
             }
+
+            self.distance = self
+                .out_window
+                .iter()
+                .map(|&byte| self.distance_map[0xAA][byte as usize])
+                .sum();
 
             self.equal_window_count = 0;
             for j in 0..8 {
@@ -178,11 +178,8 @@ impl Chunker {
     fn slide_one_byte(&mut self, data: &[u8], index: usize) {
         const BYTE: usize = 0xAA;
 
-        let old = self.out_window[0];
-        self.out_window.copy_within(1.., 0);
-
+        let old = self.out_window[index];
         let new = data[self.start + self.chk_len + index];
-        self.out_window[WINDOW_SIZE - 1] = new;
 
         self.distance += self.distance_map[BYTE][new as usize];
         self.distance -= self.distance_map[BYTE][old as usize];

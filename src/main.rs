@@ -1,5 +1,5 @@
 use chunking::leap_based::{generate_chunks, Chunker};
-use chunking::ultra;
+use chunking::{Chunk, ultra};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
@@ -39,7 +39,17 @@ fn test_chunker() {
     println!(
         "Speed: {} MB/s",
         buf.len() / time.as_millis() as usize / 1024
-    )
+    );
+
+    let chunks_len = chunks.len();
+    let chunks_map: HashMap<Chunk, usize> = HashMap::from_iter(
+        chunks.into_iter().map(|chunk| { (chunk.clone(), chunk.len)})
+    );
+    println!("Chunk ratio: {} / {} = {}", chunks_map.len(), chunks_len, chunks_map.len() / chunks_len);
+    println!("Data size ratio: {} / {} = {}",
+    chunks_map.iter().map(|(a, &b)| b).sum::<usize>(),
+    buf.len(),
+             chunks_map.iter().map(|(a, &b)| b).sum::<usize>() / buf.len());
 }
 
 fn generate_data(size: usize) -> Vec<u8> {
