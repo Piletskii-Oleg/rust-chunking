@@ -1,7 +1,7 @@
-use chunking::{ultra};
+use chunking::ultra;
+use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::Instant;
-use sha3::{Sha3_256, Digest};
 
 fn main() {
     test_chunker();
@@ -24,7 +24,11 @@ fn test_chunker() {
     let now = Instant::now();
     let chunks = chunker.generate_chunks(&buf);
     let time = now.elapsed();
-    println!("Chunked file with size {}MB in {:?}", buf.len() / 1024 / 1024, time);
+    println!(
+        "Chunked file with size {}MB in {:?}",
+        buf.len() / 1024 / 1024,
+        time
+    );
 
     let lens = chunks.iter().map(|chunk| chunk.len).collect::<Vec<usize>>();
     println!(
@@ -40,19 +44,24 @@ fn test_chunker() {
     );
 
     let chunks_len = chunks.len();
-    let chunks_map: HashMap<_, usize> = HashMap::from_iter(
-        chunks.into_iter().map(|chunk| {
-            let hash = Sha3_256::digest(&buf[chunk.pos..chunk.pos + chunk.len]);
-            let mut res = vec![0u8; hash.len()];
-            res.copy_from_slice(&hash);
-            (res, chunk.len)
-        })
+    let chunks_map: HashMap<_, usize> = HashMap::from_iter(chunks.into_iter().map(|chunk| {
+        let hash = Sha3_256::digest(&buf[chunk.pos..chunk.pos + chunk.len]);
+        let mut res = vec![0u8; hash.len()];
+        res.copy_from_slice(&hash);
+        (res, chunk.len)
+    }));
+    println!(
+        "Chunk ratio: {} / {} = {:.3}",
+        chunks_map.len(),
+        chunks_len,
+        chunks_map.len() as f64 / chunks_len as f64
     );
-    println!("Chunk ratio: {} / {} = {:.3}", chunks_map.len(), chunks_len, chunks_map.len() as f64 / chunks_len as f64);
-    println!("Data size ratio: {} / {} = {:.3}",
-    chunks_map.iter().map(|(a, &b)| b).sum::<usize>(),
-    buf.len(),
-             chunks_map.iter().map(|(a, &b)| b).sum::<usize>() as f64 / buf.len() as f64);
+    println!(
+        "Data size ratio: {} / {} = {:.3}",
+        chunks_map.iter().map(|(a, &b)| b).sum::<usize>(),
+        buf.len(),
+        chunks_map.iter().map(|(a, &b)| b).sum::<usize>() as f64 / buf.len() as f64
+    );
 }
 
 fn generate_data(size: usize) -> Vec<u8> {

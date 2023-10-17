@@ -27,7 +27,7 @@ pub struct Chunker {
     start: usize,
     chk_len: usize,
     distance: usize,
-    equal_window_count: usize
+    equal_window_count: usize,
 }
 
 fn distance_map() -> Vec<Vec<usize>> {
@@ -65,7 +65,7 @@ impl Chunker {
             start: MIN_CHUNK_SIZE,
             chk_len: MIN_CHUNK_SIZE,
             distance: 0,
-            equal_window_count: 0
+            equal_window_count: 0,
         }
     }
 
