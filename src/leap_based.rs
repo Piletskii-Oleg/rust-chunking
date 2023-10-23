@@ -73,7 +73,7 @@ impl Chunker {
     }
 
     fn transform_byte_row(byte: u8, matrix: &[Vec<f64>]) -> Vec<bool> {
-        let mut new_row = vec![0u8; 5];
+        let mut new_row = [0u8; 5];
         (0..255)
             .map(|index| Chunker::multiply_rows(byte, &matrix[index]))
             .enumerate()
@@ -85,7 +85,7 @@ impl Chunker {
 
         new_row
             .iter()
-            .map(|&number| if number % 2 == 0 { false } else { true })
+            .map(|&number| number % 2 != 0)
             .collect::<Vec<bool>>()
     }
 
@@ -144,6 +144,12 @@ impl Chunker {
             .map(|(index, byte)| self.ef_matrix[byte as usize][index]) // get elements from ef_matrix
             .fold(0, |acc, value| acc ^ (value as usize)) // why is acc of type usize?
             != 0
+    }
+}
+
+impl Default for Chunker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

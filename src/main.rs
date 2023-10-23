@@ -1,7 +1,7 @@
 use chunking::{Chunk, ultra};
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn main() {
     test_chunker();
@@ -68,9 +68,9 @@ fn dedup_info(buf: &Vec<u8>, chunks: Vec<Chunk>) {
     );
     println!(
         "Data size ratio: {} / {} = {:.3}",
-        chunks_map.iter().map(|(a, &b)| b).sum::<usize>(),
+        chunks_map.iter().map(|(_, &b)| b).sum::<usize>(),
         buf.len(),
-        chunks_map.iter().map(|(a, &b)| b).sum::<usize>() as f64 / buf.len() as f64
+        chunks_map.iter().map(|(_, &b)| b).sum::<usize>() as f64 / buf.len() as f64
     );
 }
 

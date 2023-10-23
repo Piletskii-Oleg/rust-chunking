@@ -7,7 +7,6 @@ const MAX_CHUNK_SIZE: usize = 64 * KB;
 
 const WINDOW_SIZE: usize = 8;
 
-const PATTERN: u128 = 170170170170170170170170;
 const BYTE: usize = 0xAA;
 const MASK_S: usize = 0x2F;
 const MASK_L: usize = 0x2C;
