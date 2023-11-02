@@ -1,9 +1,6 @@
-use std::cmp::min;
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
-use std::io::{Result as IoResult, Seek, SeekFrom, Write};
-use std::ptr;
-use std::usize::MIN;
+use std::io::Write;
 
 use crate::Chunk;
 use serde::{Deserialize, Serialize};

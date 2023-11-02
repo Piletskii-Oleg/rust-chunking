@@ -1,4 +1,4 @@
-use chunking::{Chunk, quick, ultra};
+use chunking::{Chunk, quick};
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::Instant;
