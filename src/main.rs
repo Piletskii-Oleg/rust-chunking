@@ -1,4 +1,4 @@
-use chunking::{Chunk, ultra};
+use chunking::{Chunk, quick, ultra};
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::Instant;
@@ -19,7 +19,7 @@ fn test_chunker() {
 
     let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
 
-    let mut chunker = ultra::Chunker::new();
+    let mut chunker = quick::Chunker::new();
 
     let now = Instant::now();
     let chunks = chunker.generate_chunks(&buf);

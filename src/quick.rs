@@ -1,4 +1,5 @@
 use std::cmp::min;
+use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::io::{Result as IoResult, Seek, SeekFrom, Write};
 use std::ptr;
@@ -49,7 +50,7 @@ pub struct ChunkerParams {
 }
 
 impl ChunkerParams {
-    pub fn new() -> Self {
+    fn new() -> Self {
         let mut cp = ChunkerParams::default();
 
         // calculate poly power, it is actually PRIME ^ WIN_SIZE
@@ -96,146 +97,86 @@ impl Default for ChunkerParams {
     }
 }
 
-/// Chunker
-pub struct Chunker<W: Write + Seek> {
-    dst: W,                // destination writer
+pub struct Chunker {
     params: ChunkerParams, // chunker parameters
     pos: usize,
     chunk_len: usize,
-    buf_clen: usize,
     win_idx: usize,
     roll_hash: u64,
     win: [u8; WINDOW_SIZE], // rolling hash circle window
-    buf: Vec<u8>,           // chunker buffer, fixed size: WTR_BUF_LEN
+    front: HashMap<[u8; 3], usize>,
+    back: HashMap<[u8; 3], usize>,
 }
 
-impl<W: Write + Seek> Chunker<W> {
-    pub fn new(params: ChunkerParams, dst: W) -> Self {
-        let mut buf = vec![0u8; BUFFER_SIZE];
-        buf.shrink_to_fit();
+impl Chunker {
+    pub fn new() -> Self {
 
         Chunker {
-            dst,
-            params,
+            params: ChunkerParams::new(),
             pos: WINDOW_SLIDE_POS,
             chunk_len: WINDOW_SLIDE_POS,
-            buf_clen: 0,
             win_idx: 0,
             roll_hash: 0,
             win: [0u8; WINDOW_SIZE],
-            buf,
+            front: HashMap::new(),
+            back: HashMap::new(),
         }
     }
 
-    pub fn into_inner(mut self) -> IoResult<W> {
-        self.flush()?;
-        Ok(self.dst)
-    }
-}
-
-struct MyChunker {
-    params: ChunkerParams, // chunker parameters
-    pos: usize,
-    chunk_len: usize,
-    buf_clen: usize,
-    win_idx: usize,
-    roll_hash: u64,
-    win: [u8; WINDOW_SIZE], // rolling hash circle window
-    buf: Vec<u8>,
-}
-
-impl MyChunker {
-    pub fn new(params: ChunkerParams) -> Self {
-        let mut buf = vec![0u8; BUFFER_SIZE];
-        buf.shrink_to_fit();
-
-        MyChunker {
-            params,
-            pos: WINDOW_SLIDE_POS,
-            chunk_len: WINDOW_SLIDE_POS,
-            buf_clen: 0,
-            win_idx: 0,
-            roll_hash: 0,
-            win: [0u8; WINDOW_SIZE],
-            buf,
+    fn check_chunk(&mut self, buf: &[u8]) -> Option<usize> {
+        if self.pos + 3 > buf.len() {
+            return None;
         }
+
+        let front_range = self.pos..self.pos + 3;
+        if let Some(front_length) = self.front.get(&buf[front_range]) {
+            if self.pos + front_length > buf.len() {
+                return None;
+            }
+
+            let end_range = self.pos + front_length - 3..self.pos + front_length;
+            if let Some(end_length) = self.back.get(&buf[end_range]) {
+                if *front_length == *end_length {
+                    return Some(*front_length);
+                }
+            }
+        }
+        None
     }
 
-    fn generate_chunks(&mut self, data: &[u8]) -> Vec<Chunk> {
-        if data.is_empty() {
+    fn add_front_back(&mut self, buf: &[u8]) {
+        let front_range = self.pos - self.chunk_len..self.pos - self.chunk_len + 3;
+        let mut front_win = [0u8; 3];
+        front_win.copy_from_slice(&buf[front_range]);
+        self.front.insert(front_win, self.chunk_len);
+
+        let end_range = self.pos - 3..self.pos;
+        let mut end_win = [0u8; 3];
+        end_win.copy_from_slice(&buf[end_range]);
+        self.back.insert(end_win, self.chunk_len);
+    }
+
+    fn reset_hash(&mut self) {
+        self.win_idx = 0;
+        self.win = [0u8; WINDOW_SIZE];
+        self.roll_hash = 0;
+    }
+
+    pub fn generate_chunks(&mut self, buf: &[u8]) -> Vec<Chunk> {
+        if buf.is_empty() {
             return vec![];
         }
 
         let mut chunks = vec![];
+        let mut counter = 0;
 
-        let in_len = min(BUFFER_SIZE - self.buf_clen, data.len());
-        self.buf[self.buf_clen..self.buf_clen + in_len].copy_from_slice(&data[..in_len]);
-        self.buf_clen += in_len;
-
-        while self.pos < self.buf_clen {
-            let cur = self.buf[self.pos];
-            let out = self.win[self.win_idx] as usize;
-            let pushed_out = self.params.out_map[out];
-
-            // Rabin rolling hash
-            self.roll_hash = (self.roll_hash * PRIME) & MASK;
-            self.roll_hash += u64::from(cur);
-            self.roll_hash = self.roll_hash.wrapping_sub(pushed_out) & MASK;
-
-            // window -> forward
-            self.win[self.win_idx] = cur;
-            self.win_idx = (self.win_idx + 1) & WINDOW_MASK;
-
-            // move forward
-            self.chunk_len += 1;
-            self.pos += 1;
-
-            // chunk can be written
-            if self.chunk_len >= MIN_CHUNK_SIZE {
-                let check_sum = self.roll_hash & self.params.ir[out];
-                if (check_sum & CUT_MASK) == 0 || self.chunk_len >= MAX_CHUNK_SIZE {
-                    chunks.push(Chunk::new(self.pos - self.chunk_len, self.chunk_len));
-
-                    // not enough space in buffer, copy remaining to
-                    // the head of buffer and reset buf position
-                    if self.pos + MAX_CHUNK_SIZE >= BUFFER_SIZE {
-                        let left_len = self.buf_clen - self.pos;
-                        unsafe {
-                            ptr::copy::<u8>(
-                                self.buf[self.pos..].as_ptr(),
-                                self.buf.as_mut_ptr(),
-                                left_len,
-                            );
-                        }
-                        self.buf_clen = left_len;
-                        self.pos = 0;
-                    }
-
-                    // jump to next start sliding position
-                    self.pos += WINDOW_SLIDE_POS;
-                    self.chunk_len = WINDOW_SLIDE_POS;
-                }
+        while self.pos < buf.len() {
+            if counter == 3 {
+                self.reset_hash();
+                counter = 0;
             }
-        }
-
-        chunks
-    }
-}
-
-impl<W: Write + Seek> Write for Chunker<W> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<usize> {
-        if buf.is_empty() {
-            return Ok(0);
-        }
-
-        let in_len = min(BUFFER_SIZE - self.buf_clen, buf.len());
-        assert!(in_len > 0);
-        self.buf[self.buf_clen..self.buf_clen + in_len].copy_from_slice(&buf[..in_len]);
-        self.buf_clen += in_len;
-
-        while self.pos < self.buf_clen {
             // get current byte and pushed out byte
-            let ch = self.buf[self.pos];
+            let ch = buf[self.pos];
             let out = self.win[self.win_idx] as usize;
             let pushed_out = self.params.out_map[out];
 
@@ -251,31 +192,22 @@ impl<W: Write + Seek> Write for Chunker<W> {
             self.chunk_len += 1;
             self.pos += 1;
 
+            // chunk can be written
             if self.chunk_len >= MIN_CHUNK_SIZE {
-                let chksum = self.roll_hash ^ self.params.ir[out];
+                let check_sum = self.roll_hash & self.params.ir[out];
 
-                // reached cut point, chunk can be produced now
-                if (chksum & CUT_MASK) == 0 || self.chunk_len >= MAX_CHUNK_SIZE {
-                    // write the chunk to destination writer,
-                    // ensure it is consumed in whole
-                    let p = self.pos - self.chunk_len;
-                    let written = self.dst.write(&self.buf[p..self.pos])?;
-                    assert_eq!(written, self.chunk_len);
+                if (check_sum & CUT_MASK) == 0 || self.chunk_len >= MAX_CHUNK_SIZE {
+                    chunks.push(Chunk::new(self.pos - self.chunk_len, self.chunk_len));
+                    counter += 1;
 
-                    // not enough space in buffer, copy remaining to
-                    // the head of buffer and reset buf position
-                    if self.pos + MAX_CHUNK_SIZE >= BUFFER_SIZE {
-                        let left_len = self.buf_clen - self.pos;
-                        unsafe {
-                            ptr::copy::<u8>(
-                                self.buf[self.pos..].as_ptr(),
-                                self.buf.as_mut_ptr(),
-                                left_len,
-                            );
-                        }
-                        self.buf_clen = left_len;
-                        self.pos = 0;
-                    }
+                    // self.add_front_back(buf);
+                    //
+                    // while let Some(length) = self.check_chunk(buf) {
+                    //     self.pos += length;
+                    //     self.chunk_len = length;
+                    //
+                    //     chunks.push(Chunk::new(self.pos - self.chunk_len, self.chunk_len));
+                    // }
 
                     // jump to next start sliding position
                     self.pos += WINDOW_SLIDE_POS;
@@ -284,25 +216,12 @@ impl<W: Write + Seek> Write for Chunker<W> {
             }
         }
 
-        Ok(in_len)
-    }
-
-    fn flush(&mut self) -> IoResult<()> {
-        // flush remaining data to destination
-        let p = self.pos - self.chunk_len;
-        if p < self.buf_clen {
-            self.chunk_len = self.buf_clen - p;
-            let _ = self.dst.write(&self.buf[p..(p + self.chunk_len)])?;
+        let last_chunk = &chunks[chunks.len() - 1];
+        if last_chunk.pos + last_chunk.len < buf.len() {
+            let len = buf.len() - last_chunk.pos - last_chunk.len;
+            chunks.push(Chunk::new(last_chunk.pos + last_chunk.len, len));
         }
 
-        // reset chunker
-        self.pos = WINDOW_SLIDE_POS;
-        self.chunk_len = WINDOW_SLIDE_POS;
-        self.buf_clen = 0;
-        self.win_idx = 0;
-        self.roll_hash = 0;
-        self.win = [0u8; WINDOW_SIZE];
-
-        self.dst.flush()
+        chunks
     }
 }
