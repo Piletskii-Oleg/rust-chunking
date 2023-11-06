@@ -15,27 +15,19 @@ const MASK_L_LS: u64 = MASK_L << 1;
 const MASK_B_LS: u64 = MASK_B << 1;
 
 pub struct Chunker {
-    fingerprint: u64,
-    pos: usize,
-    chunk_len: usize,
-    remaining: usize,
     start: usize
 }
 
 impl Chunker {
     pub fn new() -> Self {
         Self {
-            fingerprint: 0,
-            pos: MIN_CHUNK_SIZE / 2,
-            chunk_len: 0,
-            remaining: 0,
             start: 0
         }
     }
 
     pub fn generate_chunks(&mut self, buf: &[u8]) -> Vec<Chunk> {
-        self.remaining = buf.len();
         let mut chunks = vec![];
+        self.start = 0;
 
         while self.start < buf.len() {
             let length = find_border(&buf[self.start..]);
