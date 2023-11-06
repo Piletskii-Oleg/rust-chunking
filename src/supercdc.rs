@@ -2,13 +2,13 @@ use std::cmp::min;
 use crate::Chunk;
 
 const MIN_CHUNK_SIZE: usize = 1024 * 4;
-const AVG_CHUNK_SIZE: usize = 1024 * 8;
+const AVG_CHUNK_SIZE: usize = 1024 * 6;
 const MAX_CHUNK_SIZE: usize = 1024 * 64;
 
 // 8KB, 4KB and 2KB masks
-const MASK_S: u64 = 0x0000d90003530000;
-const MASK_L: u64 = 0x0000d90103530000;
-const MASK_B: u64 = 0x0000d90303530000;
+const MASK_S: u64 = 0b1111_1111_1111_11;
+const MASK_L: u64 = 0b1111_1111_111;
+const MASK_B: u64 = 0b1111_1111_11;
 
 const MASK_S_LS: u64 = MASK_B << 1;
 const MASK_L_LS: u64 = MASK_L << 1;
