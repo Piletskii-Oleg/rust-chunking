@@ -1,8 +1,8 @@
-use chunking::{Chunk, supercdc, ultra};
+use chunking::{supercdc, Chunk};
+use fastcdc::v2020::FastCDC;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::Instant;
-use fastcdc::v2020::FastCDC;
 
 fn main() {
     test_chunker();

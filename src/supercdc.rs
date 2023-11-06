@@ -1,28 +1,26 @@
-use std::cmp::min;
 use crate::Chunk;
+use std::cmp::min;
 
 const MIN_CHUNK_SIZE: usize = 1024 * 4;
 const AVG_CHUNK_SIZE: usize = 1024 * 6;
 const MAX_CHUNK_SIZE: usize = 1024 * 64;
 
 // 8KB, 4KB and 2KB masks
-const MASK_S: u64 = 0b1111_1111_1111_11;
-const MASK_L: u64 = 0b1111_1111_111;
-const MASK_B: u64 = 0b1111_1111_11;
+const MASK_S: u64 = 0b1111_1111_1111;
+const MASK_L: u64 = 0b111_1111_1111;
+const MASK_B: u64 = 0b11_1111_1111;
 
 const MASK_S_LS: u64 = MASK_B << 1;
 const MASK_L_LS: u64 = MASK_L << 1;
 const MASK_B_LS: u64 = MASK_B << 1;
 
 pub struct Chunker {
-    start: usize
+    start: usize,
 }
 
 impl Chunker {
     pub fn new() -> Self {
-        Self {
-            start: 0
-        }
+        Self { start: 0 }
     }
 
     pub fn generate_chunks(&mut self, buf: &[u8]) -> Vec<Chunk> {
@@ -80,27 +78,29 @@ fn find_border(buf: &[u8]) -> usize {
         if fingerprint & MASK_L_LS == 0 {
             return a;
         }
-        if fingerprint & MASK_B_LS == 0 {
-            if !breakpoint_flag {
-                breakpoint_flag = true;
-                breakpoint = a;
-            }
+        if fingerprint & MASK_B_LS == 0 && !breakpoint_flag {
+            breakpoint_flag = true;
+            breakpoint = a;
         }
 
         fingerprint = fingerprint.wrapping_add(GEAR[buf[a + 1] as usize]);
         if fingerprint & MASK_L == 0 {
             return a + 1;
         }
-        if fingerprint & MASK_B == 0 {
-            if !breakpoint_flag {
-                breakpoint_flag = true;
-                breakpoint = a + 1;
-            }
+        if fingerprint & MASK_B == 0 && !breakpoint_flag {
+            breakpoint_flag = true;
+            breakpoint = a + 1;
         }
         pos += 1;
     }
 
     breakpoint
+}
+
+impl Default for Chunker {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 // Gear table taken from https://github.com/nlfiedler/fastcdc-rs
