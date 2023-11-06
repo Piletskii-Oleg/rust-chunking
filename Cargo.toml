@@ -10,6 +10,7 @@ rand = "0.8.5"
 rand_distr = "0.4.3"
 serde = { version = "1.0.130", features = ["derive"] }
 sha3 = "0.10.8"
+fastcdc = "3.1.0"
 
 [profile.release-with-info]
 inherits = "release"

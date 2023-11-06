@@ -1,7 +1,8 @@
-use chunking::{Chunk, ultra};
+use chunking::{Chunk, supercdc, ultra};
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::Instant;
+use fastcdc::v2020::FastCDC;
 
 fn main() {
     test_chunker();
@@ -18,8 +19,9 @@ fn test_chunker() {
     // );
 
     let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
+    let fast_chunks = measure_fast(&buf);
 
-    let mut chunker = ultra::Chunker::new();
+    let mut chunker = supercdc::Chunker::new();
 
     let now = Instant::now();
     let chunks = chunker.generate_chunks(&buf);
@@ -47,12 +49,37 @@ fn test_chunker() {
         buf.len() / time.as_millis() as usize / 1024
     );
 
-    // Спросить у Ростислава подходящие датасеты
-
     dedup_info(&buf, chunks);
+    dedup_info(&buf, fast_chunks);
 }
 
-fn dedup_info(buf: &Vec<u8>, chunks: Vec<Chunk>) {
+fn measure_fast(buf: &[u8]) -> Vec<Chunk> {
+    let chunker = FastCDC::new(buf, 2 * 1024, 4 * 1024, 64 * 1024);
+
+    let mut chunks = vec![];
+    let now = Instant::now();
+    for chunk in chunker {
+        chunks.push(Chunk::new(chunk.offset, chunk.length));
+    }
+    let lens = chunks.iter().map(|chunk| chunk.len).collect::<Vec<usize>>();
+    let time = now.elapsed();
+    println!(
+        "Chunked file with size {}MB in {:?}",
+        buf.len() / 1024 / 1024,
+        time
+    );
+    println!(
+        "Speed: {} MB/s",
+        buf.len() / time.as_millis() as usize / 1024
+    );
+    println!(
+        "Average len: {} bytes",
+        lens.iter().sum::<usize>() / chunks.len()
+    );
+    chunks
+}
+
+fn dedup_info(buf: &[u8], chunks: Vec<Chunk>) {
     let chunks_len = chunks.len();
     let chunks_map: HashMap<_, usize> = HashMap::from_iter(chunks.into_iter().map(|chunk| {
         let hash = Sha3_256::digest(&buf[chunk.pos..chunk.pos + chunk.len]);

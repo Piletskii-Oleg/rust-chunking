@@ -1,6 +1,7 @@
 pub mod leap_based;
 pub mod quick;
 pub mod ultra;
+pub mod supercdc;
 
 #[derive(Debug)]
 pub struct Chunk {
@@ -10,7 +11,7 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    fn new(pos: usize, len: usize) -> Self {
+    pub fn new(pos: usize, len: usize) -> Self {
         Chunk { pos, len }
     }
 }
