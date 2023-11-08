@@ -1,8 +1,8 @@
 use crate::Chunk;
 use std::cmp::min;
 
-const MIN_CHUNK_SIZE: usize = 1024 * 4;
-const AVG_CHUNK_SIZE: usize = 1024 * 6;
+const MIN_CHUNK_SIZE: usize = 1024 * 3;
+const AVG_CHUNK_SIZE: usize = 1024 * 8;
 const MAX_CHUNK_SIZE: usize = 1024 * 64;
 
 // 8KB, 4KB and 2KB masks
@@ -54,7 +54,7 @@ fn find_border(buf: &[u8]) -> usize {
     let mut fingerprint: u64 = 0;
     let mut pos: usize = MIN_CHUNK_SIZE / 2;
 
-    for index in 1..64 {
+    for index in 1..16 {
         fingerprint = fingerprint.wrapping_add(GEAR[buf[MIN_CHUNK_SIZE - index] as usize] << index);
         pos += 1;
     }
@@ -78,7 +78,7 @@ fn find_border(buf: &[u8]) -> usize {
         if fingerprint & MASK_L_LS == 0 {
             return a;
         }
-        if fingerprint & MASK_B_LS == 0 && !breakpoint_flag {
+        if !breakpoint_flag && fingerprint & MASK_B_LS == 0 {
             breakpoint_flag = true;
             breakpoint = a;
         }
@@ -87,7 +87,7 @@ fn find_border(buf: &[u8]) -> usize {
         if fingerprint & MASK_L == 0 {
             return a + 1;
         }
-        if fingerprint & MASK_B == 0 && !breakpoint_flag {
+        if !breakpoint_flag && fingerprint & MASK_B == 0 {
             breakpoint_flag = true;
             breakpoint = a + 1;
         }

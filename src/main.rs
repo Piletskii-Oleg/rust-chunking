@@ -19,7 +19,6 @@ fn test_chunker() {
     // );
 
     let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
-    let fast_chunks = measure_fast(&buf);
 
     let mut chunker = supercdc::Chunker::new();
 
@@ -50,11 +49,13 @@ fn test_chunker() {
     );
 
     dedup_info(&buf, chunks);
-    dedup_info(&buf, fast_chunks);
+
+    //let fast_chunks = measure_fast(&buf);
+    //dedup_info(&buf, fast_chunks);
 }
 
 fn measure_fast(buf: &[u8]) -> Vec<Chunk> {
-    let chunker = FastCDC::new(buf, 2 * 1024, 4 * 1024, 64 * 1024);
+    let chunker = FastCDC::new(buf, 4 * 1024, 8 * 1024, 64 * 1024);
 
     let mut chunks = vec![];
     let now = Instant::now();
