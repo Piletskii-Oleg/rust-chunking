@@ -1,5 +1,6 @@
 use crate::Chunk;
 use std::cmp::min;
+use std::collections::HashMap;
 
 const MIN_CHUNK_SIZE: usize = 1024 * 3;
 const AVG_CHUNK_SIZE: usize = 1024 * 8;
@@ -16,33 +17,56 @@ const MASK_B_LS: u64 = MASK_B << 1;
 
 pub struct Chunker {
     start: usize,
+    records: HashMap<u64, usize>,
 }
 
 impl Chunker {
     pub fn new() -> Self {
-        Self { start: 0 }
+        Self {
+            start: 0,
+            records: HashMap::new(),
+        }
     }
 
     pub fn generate_chunks(&mut self, buf: &[u8]) -> Vec<Chunk> {
         let mut chunks = vec![];
         self.start = 0;
 
+        let mut last_hash = 0;
+        let mut record_last_hash = false;
+
         while self.start < buf.len() {
-            let length = find_border(&buf[self.start..]);
+            let (hash, length) = find_border(&buf[self.start..]);
 
             let chunk = Chunk::new(self.start, length);
             chunks.push(chunk);
-
             self.start += length;
+
+            if record_last_hash {
+                self.records.insert(last_hash, length);
+            }
+
+            if let Some(&found_length) = self.records.get(&hash) {
+                if self.start + found_length < buf.len() {
+                    let chunk = Chunk::new(self.start, found_length);
+                    chunks.push(chunk);
+                    self.start += found_length;
+                }
+                record_last_hash = false;
+            } else {
+                record_last_hash = true;
+            }
+
+            last_hash = hash;
         }
 
         chunks
     }
 }
 
-fn find_border(buf: &[u8]) -> usize {
+fn find_border(buf: &[u8]) -> (u64, usize) {
     if buf.len() < MIN_CHUNK_SIZE * 2 {
-        return buf.len();
+        return (0, buf.len());
     }
 
     let remaining = min(MAX_CHUNK_SIZE, buf.len());
@@ -54,6 +78,9 @@ fn find_border(buf: &[u8]) -> usize {
     let mut fingerprint: u64 = 0;
     let mut pos: usize = MIN_CHUNK_SIZE / 2;
 
+    let mut breakpoint_gear = 0;
+    let mut gear = 0;
+
     for index in 1..16 {
         fingerprint = fingerprint.wrapping_add(GEAR[buf[MIN_CHUNK_SIZE - index] as usize] << index);
         pos += 1;
@@ -61,40 +88,46 @@ fn find_border(buf: &[u8]) -> usize {
 
     while pos < center / 2 {
         let a = pos * 2;
-        fingerprint = (fingerprint << 2).wrapping_add(GEAR_LS[buf[a] as usize]);
+        gear = GEAR_LS[buf[a] as usize];
+        fingerprint = (fingerprint << 2).wrapping_add(gear);
         if fingerprint & MASK_S_LS == 0 {
-            return a;
+            return (gear, a);
         }
-        fingerprint = fingerprint.wrapping_add(GEAR[buf[a + 1] as usize]);
+        gear = GEAR[buf[a + 1] as usize];
+        fingerprint = fingerprint.wrapping_add(gear);
         if fingerprint & MASK_S == 0 {
-            return a + 1;
+            return (gear, a + 1);
         }
         pos += 1;
     }
 
     while pos < remaining / 2 {
         let a = pos * 2;
-        fingerprint = (fingerprint << 2).wrapping_add(GEAR_LS[buf[a] as usize]);
+        gear = GEAR_LS[buf[a] as usize];
+        fingerprint = (fingerprint << 2).wrapping_add(gear);
         if fingerprint & MASK_L_LS == 0 {
-            return a;
+            return (gear, a);
         }
         if !breakpoint_flag && fingerprint & MASK_B_LS == 0 {
             breakpoint_flag = true;
             breakpoint = a;
+            breakpoint_gear = gear;
         }
 
-        fingerprint = fingerprint.wrapping_add(GEAR[buf[a + 1] as usize]);
+        gear = GEAR[buf[a + 1] as usize];
+        fingerprint = fingerprint.wrapping_add(gear);
         if fingerprint & MASK_L == 0 {
-            return a + 1;
+            return (gear, a + 1);
         }
         if !breakpoint_flag && fingerprint & MASK_B == 0 {
             breakpoint_flag = true;
             breakpoint = a + 1;
+            breakpoint_gear = gear;
         }
         pos += 1;
     }
 
-    breakpoint
+    (breakpoint_gear, breakpoint)
 }
 
 impl Default for Chunker {
@@ -271,7 +304,8 @@ impl ChunkerWithFields {
         self.start = 0;
 
         while self.start < buf.len() {
-            self.chunk_len = find_border(&buf[self.start..]);
+            let (_hash, len) = find_border(&buf[self.start..]);
+            self.chunk_len = len;
 
             let chunk = Chunk::new(self.start, self.chunk_len);
             chunks.push(chunk);
