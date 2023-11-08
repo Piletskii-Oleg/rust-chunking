@@ -240,3 +240,104 @@ const GEAR_LS: [u64; 256] = [
     0xf63cdc45c1140766, 0xd4c6bfb746d31ba0, 0x9ea6cb2650a074b8, 0x9bc7663cdfabaf00,
     0x1c7c8443a6c28826, 0xde29a1b0d7e34458, 0xc3b061a7e2d8bbb6, 0x557a56548a2a09c2
 ];
+
+pub struct ChunkerWithFields {
+    start: usize,
+    pos: usize,
+    chunk_len: usize,
+    breakpoint: usize,
+    breakpoint_flag: bool,
+    remaining: usize,
+    center: usize,
+    fingerprint: u64,
+}
+
+impl ChunkerWithFields {
+    pub fn new() -> Self {
+        Self {
+            start: 0,
+            pos: MIN_CHUNK_SIZE / 2,
+            chunk_len: 0,
+            breakpoint: 0,
+            breakpoint_flag: false,
+            remaining: 0,
+            center: 0,
+            fingerprint: 0,
+        }
+    }
+
+    pub fn generate_chunks(&mut self, buf: &[u8]) -> Vec<Chunk> {
+        let mut chunks = vec![];
+        self.start = 0;
+
+        while self.start < buf.len() {
+            self.chunk_len = find_border(&buf[self.start..]);
+
+            let chunk = Chunk::new(self.start, self.chunk_len);
+            chunks.push(chunk);
+
+            self.start += self.chunk_len;
+        }
+
+        chunks
+    }
+
+    fn find_border(&mut self, buf: &[u8]) -> usize {
+        if buf.len() < MIN_CHUNK_SIZE * 2 {
+            return buf.len();
+        }
+
+        self.remaining = min(MAX_CHUNK_SIZE, buf.len());
+        self.center = min(AVG_CHUNK_SIZE, buf.len());
+
+        self.breakpoint = self.remaining;
+        self.breakpoint_flag = false;
+
+        self.fingerprint = 0;
+        self.pos = MIN_CHUNK_SIZE / 2;
+
+        for index in 1..64 {
+            self.fingerprint = self
+                .fingerprint
+                .wrapping_add(GEAR[buf[MIN_CHUNK_SIZE - index] as usize] << index);
+            self.pos += 1;
+        }
+
+        while self.pos < self.center / 2 {
+            let a = self.pos * 2;
+            self.fingerprint = (self.fingerprint << 2).wrapping_add(GEAR_LS[buf[a] as usize]);
+            if self.fingerprint & MASK_S_LS == 0 {
+                return a;
+            }
+            self.fingerprint = self.fingerprint.wrapping_add(GEAR[buf[a + 1] as usize]);
+            if self.fingerprint & MASK_S == 0 {
+                return a + 1;
+            }
+            self.pos += 1;
+        }
+
+        while self.pos < self.remaining / 2 {
+            let a = self.pos * 2;
+            self.fingerprint = (self.fingerprint << 2).wrapping_add(GEAR_LS[buf[a] as usize]);
+            if self.fingerprint & MASK_L_LS == 0 {
+                return a;
+            }
+            if self.fingerprint & MASK_B_LS == 0 && !self.breakpoint_flag {
+                self.breakpoint_flag = true;
+                self.breakpoint = a;
+            }
+
+            self.fingerprint = self.fingerprint.wrapping_add(GEAR[buf[a + 1] as usize]);
+            if self.fingerprint & MASK_L == 0 {
+                return a + 1;
+            }
+            if self.fingerprint & MASK_B == 0 && !self.breakpoint_flag {
+                self.breakpoint_flag = true;
+                self.breakpoint = a + 1;
+            }
+            self.pos += 1;
+        }
+
+        self.breakpoint
+    }
+}
