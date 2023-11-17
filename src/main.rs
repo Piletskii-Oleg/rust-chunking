@@ -8,15 +8,6 @@ fn main() {
 }
 
 fn test_chunker() {
-    // const DATA_SIZE: usize = 1024 * 1024 * 100 * 2;
-    // let now = Instant::now();
-    // let to_chunk: Vec<u8> = generate_data(DATA_SIZE);
-    // println!(
-    //     "Generated data ({} bytes) in {:?}. Calculating chunks...",
-    //     to_chunk.len(),
-    //     now.elapsed()
-    // );
-
     let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
 
     let mut chunker = ultra::Chunker::new();

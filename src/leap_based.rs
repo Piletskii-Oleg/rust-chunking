@@ -142,8 +142,41 @@ impl Chunker {
             .map(|index| window[WINDOW_SIZE - 1 - index * WINDOW_MATRIX_SHIFT]) // init array
             .enumerate()
             .map(|(index, byte)| self.ef_matrix[byte as usize][index]) // get elements from ef_matrix
-            .fold(0, |acc, value| acc ^ (value as usize)) // why is acc of type usize?
+            .fold(0u8, |acc, value| acc ^ value)
             != 0
+    }
+
+    pub fn generate_chunks(&self, data: &[u8]) -> Vec<Chunk> {
+        let mut chunks = vec![];
+
+        let mut chunk_start = 0;
+        let mut index = MIN_CHUNK_SIZE;
+
+        while index < data.len() {
+            if index - chunk_start > MAX_CHUNK_SIZE {
+                chunks.push(Chunk::new(chunk_start, index - chunk_start));
+                chunk_start = index;
+                index += MIN_CHUNK_SIZE;
+            } else {
+                match self.is_point_satisfied(index, data) {
+                    PointStatus::Ok => {
+                        chunks.push(Chunk::new(chunk_start, index - chunk_start));
+                        chunk_start = index;
+                        index += MIN_CHUNK_SIZE;
+                    }
+                    PointStatus::Unsatisfied(leap) => {
+                        index += leap;
+                    }
+                };
+            }
+        }
+
+        if index >= data.len() {
+            index = data.len();
+            chunks.push(Chunk::new(chunk_start, index - chunk_start));
+        }
+
+        chunks
     }
 }
 
