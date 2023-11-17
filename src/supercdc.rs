@@ -7,9 +7,9 @@ const AVG_CHUNK_SIZE: usize = 1024 * 8;
 const MAX_CHUNK_SIZE: usize = 1024 * 64;
 
 // 8KB, 4KB and 2KB masks
-const MASK_S: u64 = 0b1111_1111_1111;
-const MASK_L: u64 = 0b111_1111_1111;
-const MASK_B: u64 = 0b11_1111_1111;
+const MASK_S: u64 = 0x0000d90303530000;
+const MASK_L: u64 = 0x0000d90103530000;
+const MASK_B: u64 = 0x0000d90003530000;
 
 const MASK_S_LS: u64 = MASK_B << 1;
 const MASK_L_LS: u64 = MASK_L << 1;
@@ -18,6 +18,8 @@ const MASK_B_LS: u64 = MASK_B << 1;
 pub struct Chunker {
     start: usize,
     records: HashMap<u64, usize>,
+    last_hash: u64,
+    record_last_hash: bool,
 }
 
 impl Chunker {
@@ -25,15 +27,59 @@ impl Chunker {
         Self {
             start: 0,
             records: HashMap::new(),
+            last_hash: 0,
+            record_last_hash: true,
         }
+    }
+
+    fn use_record_map(&mut self, hash: u64, length: usize, buf_size: usize) -> Option<Chunk> {
+        if self.record_last_hash {
+            self.records.insert(self.last_hash, length);
+        }
+
+        if let Some(&found_length) = self.records.get(&hash) {
+            self.record_last_hash = false;
+            if self.start + found_length < buf_size {
+                let chunk = Chunk::new(self.start, found_length);
+                self.start += found_length;
+                return Some(chunk);
+            }
+        } else {
+            self.record_last_hash = true;
+        }
+
+        self.last_hash = hash;
+        None
+    }
+
+    pub fn generate_with_fast(&mut self, buf: &[u8]) -> Vec<Chunk> {
+        let mut chunks = vec![];
+        self.start = 0;
+
+        while self.start < buf.len() {
+            let (hash, length) = fastcdc::v2020::FastCDC::new(
+                &buf[self.start..],
+                MIN_CHUNK_SIZE as u32,
+                AVG_CHUNK_SIZE as u32,
+                MAX_CHUNK_SIZE as u32,
+            )
+            .cut(0, buf[self.start..].len());
+
+            let chunk = Chunk::new(self.start, length);
+            chunks.push(chunk);
+            self.start += length;
+
+            if let Some(chunk) = self.use_record_map(hash, length, buf.len()) {
+                chunks.push(chunk);
+            }
+        }
+
+        chunks
     }
 
     pub fn generate_chunks(&mut self, buf: &[u8]) -> Vec<Chunk> {
         let mut chunks = vec![];
         self.start = 0;
-
-        let mut last_hash = 0;
-        let mut record_last_hash = false;
 
         while self.start < buf.len() {
             let (hash, length) = find_border(&buf[self.start..]);
@@ -42,22 +88,9 @@ impl Chunker {
             chunks.push(chunk);
             self.start += length;
 
-            if record_last_hash {
-                self.records.insert(last_hash, length);
+            if let Some(chunk) = self.use_record_map(hash, length, buf.len()) {
+                chunks.push(chunk);
             }
-
-            if let Some(&found_length) = self.records.get(&hash) {
-                if self.start + found_length < buf.len() {
-                    let chunk = Chunk::new(self.start, found_length);
-                    chunks.push(chunk);
-                    self.start += found_length;
-                }
-                record_last_hash = false;
-            } else {
-                record_last_hash = true;
-            }
-
-            last_hash = hash;
         }
 
         chunks
