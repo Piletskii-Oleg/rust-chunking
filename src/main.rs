@@ -1,4 +1,4 @@
-use chunking::{Chunk, ultra};
+use chunking::{leap_based, ultra, Chunk};
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::Instant;
@@ -10,10 +10,13 @@ fn main() {
 fn test_chunker() {
     let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
 
-    let mut chunker = ultra::Chunker::new();
+    let mut chunker = leap_based::Chunker::new(&buf);
 
     let now = Instant::now();
-    let chunks = chunker.generate_chunks(&buf);
+    let mut chunks = Vec::new();
+    for chunk in chunker {
+        chunks.push(chunk);
+    }
     let time = now.elapsed();
 
     let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
@@ -37,8 +40,6 @@ fn test_chunker() {
         "Speed: {} MB/s",
         buf.len() / time.as_millis() as usize / 1024
     );
-
-    // Спросить у Ростислава подходящие датасеты
 
     dedup_info(&buf, chunks);
 }

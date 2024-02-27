@@ -20,12 +20,26 @@ enum PointStatus {
     Unsatisfied(usize),
 }
 
-pub struct Chunker {
+pub struct Chunker<'a> {
     ef_matrix: Vec<Vec<u8>>,
+    buf: &'a [u8],
+    position: usize,
+    chunk_start: usize,
 }
 
-impl Chunker {
-    pub fn new() -> Self {
+impl<'a> Chunker<'a> {
+    pub fn new(buf: &'a [u8]) -> Self {
+        let ef_matrix = Self::create_ef_matrix();
+
+        Chunker {
+            ef_matrix,
+            buf,
+            position: MIN_CHUNK_SIZE,
+            chunk_start: 0,
+        }
+    }
+
+    fn create_ef_matrix() -> Vec<Vec<u8>> {
         let base_matrix = (0..=255)
             .map(|index| vec![index; 5])
             .collect::<Vec<Vec<u8>>>(); // 256x5 matrix that looks like ((0,0,0,0,0), (1,1,1,1,1)..)
@@ -41,8 +55,7 @@ impl Chunker {
             .zip(f_matrix.iter())
             .map(Chunker::concatenate_bits_in_rows)
             .collect();
-
-        Chunker { ef_matrix }
+        ef_matrix
     }
 
     fn transform_base_matrix(
@@ -116,10 +129,12 @@ impl Chunker {
         (0..MATRIX_WIDTH).map(|_| normal.sample(rng)).collect()
     }
 
-    fn is_point_satisfied(&self, index: usize, data: &[u8]) -> PointStatus {
+    fn is_point_satisfied(&self) -> PointStatus {
         // primary check, T<=x<M where T is WINDOW_SECONDARY_COUNT and M is WINDOW_COUNT
         for i in WINDOW_SECONDARY_COUNT..WINDOW_COUNT {
-            if !self.is_window_qualified(&data[index - i - WINDOW_SIZE..index - i]) {
+            if !self
+                .is_window_qualified(&self.buf[self.position - i - WINDOW_SIZE..self.position - i])
+            {
                 // window is WINDOW_SIZE bytes long and moves to the left
                 let leap = WINDOW_COUNT - i;
                 return PointStatus::Unsatisfied(leap);
@@ -128,7 +143,9 @@ impl Chunker {
 
         //secondary check, 0<=x<T bytes
         for i in 0..WINDOW_SECONDARY_COUNT {
-            if !self.is_window_qualified(&data[index - i - WINDOW_SIZE..index - i]) {
+            if !self
+                .is_window_qualified(&self.buf[self.position - i - WINDOW_SIZE..self.position - i])
+            {
                 let leap = WINDOW_COUNT - WINDOW_SECONDARY_COUNT - i;
                 return PointStatus::Unsatisfied(leap);
             }
@@ -145,92 +162,47 @@ impl Chunker {
             .fold(0u8, |acc, value| acc ^ value)
             != 0
     }
+}
 
-    pub fn generate_chunks(&self, data: &[u8]) -> Vec<Chunk> {
-        let mut chunks = vec![];
+impl Iterator for Chunker<'_> {
+    type Item = Chunk;
 
-        let mut chunk_start = 0;
-        let mut index = MIN_CHUNK_SIZE;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.position == self.buf.len() {
+            return None;
+        }
 
-        while index < data.len() {
-            if index - chunk_start > MAX_CHUNK_SIZE {
-                chunks.push(Chunk::new(chunk_start, index - chunk_start));
-                chunk_start = index;
-                index += MIN_CHUNK_SIZE;
+        while self.position < self.buf.len() {
+            if self.position - self.chunk_start > MAX_CHUNK_SIZE {
+                let pos = self.chunk_start;
+                let len = self.position - self.chunk_start;
+
+                self.chunk_start = self.position;
+                self.position += MIN_CHUNK_SIZE;
+
+                return Some(Chunk::new(pos, len));
             } else {
-                match self.is_point_satisfied(index, data) {
+                match self.is_point_satisfied() {
                     PointStatus::Ok => {
-                        chunks.push(Chunk::new(chunk_start, index - chunk_start));
-                        chunk_start = index;
-                        index += MIN_CHUNK_SIZE;
+                        let pos = self.chunk_start;
+                        let len = self.position - self.chunk_start;
+
+                        self.chunk_start = self.position;
+                        self.position += MIN_CHUNK_SIZE;
+
+                        return Some(Chunk::new(pos, len));
                     }
                     PointStatus::Unsatisfied(leap) => {
-                        index += leap;
+                        self.position += leap;
                     }
-                };
+                }
             }
         }
 
-        if index >= data.len() {
-            index = data.len();
-            chunks.push(Chunk::new(chunk_start, index - chunk_start));
-        }
-
-        chunks
+        self.position = self.buf.len();
+        return Some(Chunk::new(
+            self.chunk_start,
+            self.position - self.chunk_start,
+        ));
     }
-}
-
-impl Default for Chunker {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub fn generate_chunks(chunker: &Chunker, data: &[u8]) -> Vec<Chunk> {
-    let mut chunks = vec![];
-
-    let mut chunk_start = 0;
-    let mut index = MIN_CHUNK_SIZE;
-
-    while index < data.len() {
-        if index - chunk_start > MAX_CHUNK_SIZE {
-            chunks.push(Chunk::new(chunk_start, index - chunk_start));
-            chunk_start = index;
-            index += MIN_CHUNK_SIZE;
-            if chunks.len() > 1 {
-                assert_eq!(
-                    chunks[chunks.len() - 2].pos + chunks[chunks.len() - 2].len,
-                    chunks.last().unwrap().pos
-                );
-            }
-        } else {
-            match chunker.is_point_satisfied(index, data) {
-                PointStatus::Ok => {
-                    chunks.push(Chunk::new(chunk_start, index - chunk_start));
-                    chunk_start = index;
-                    index += MIN_CHUNK_SIZE;
-                    if chunks.len() > 1 {
-                        assert_eq!(
-                            chunks[chunks.len() - 2].pos + chunks[chunks.len() - 2].len,
-                            chunks.last().unwrap().pos
-                        );
-                    }
-                }
-                PointStatus::Unsatisfied(leap) => {
-                    index += leap;
-                }
-            };
-        }
-    }
-
-    if index >= data.len() {
-        index = data.len();
-        chunks.push(Chunk::new(chunk_start, index - chunk_start));
-        assert_eq!(
-            chunks[chunks.len() - 1].pos + chunks[chunks.len() - 1].len,
-            data.len()
-        )
-    }
-
-    chunks
 }
