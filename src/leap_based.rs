@@ -200,9 +200,9 @@ impl Iterator for Chunker<'_> {
         }
 
         self.position = self.buf.len();
-        return Some(Chunk::new(
+        Some(Chunk::new(
             self.chunk_start,
             self.position - self.chunk_start,
-        ));
+        ))
     }
 }

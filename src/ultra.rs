@@ -13,12 +13,9 @@ const MASK_L: usize = 0x2C;
 
 const LEST: usize = 64;
 
-#[derive(Debug)]
-enum HammingError {
-    DifferentLength,
-}
-
-pub struct Chunker {
+pub struct Chunker<'a> {
+    buf: &'a [u8],
+    buf_len: usize,
     out_window: [u8; WINDOW_SIZE],
     in_window: [u8; WINDOW_SIZE],
     normal_size: usize,
@@ -38,15 +35,11 @@ fn distance_map() -> Vec<Vec<usize>> {
         .collect()
 }
 
-impl Default for Chunker {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Chunker {
-    pub fn new() -> Self {
+impl<'a> Chunker<'a> {
+    pub fn new(buf: &'a [u8]) -> Self {
         Self {
+            buf,
+            buf_len: buf.len(),
             out_window: [0u8; WINDOW_SIZE],
             in_window: [0u8; WINDOW_SIZE],
             normal_size: NORMAL_CHUNK_SIZE,
@@ -57,19 +50,19 @@ impl Chunker {
         }
     }
 
-    pub fn generate_chunks(&mut self, data: &[u8]) -> Vec<Chunk> {
+    pub fn generate_chunks(&mut self) -> Vec<Chunk> {
         let mut chunks: Vec<Chunk> = vec![];
         self.normal_size = NORMAL_CHUNK_SIZE;
-        if data.len() <= MIN_CHUNK_SIZE {
-            return vec![Chunk::new(0, data.len())];
+        if self.buf_len <= MIN_CHUNK_SIZE {
+            return vec![Chunk::new(0, self.buf_len)];
         }
 
-        if data.len() <= self.normal_size {
-            self.normal_size = data.len();
+        if self.buf_len <= self.normal_size {
+            self.normal_size = self.buf_len;
         }
 
-        while self.start + self.chk_len < data.len() {
-            let chunk = self.generate_chunk(data);
+        while self.start + self.chk_len < self.buf_len {
+            let chunk = self.generate_chunk();
 
             if !chunks.is_empty() {
                 let last = chunks.len() - 1;
@@ -79,43 +72,43 @@ impl Chunker {
             chunks.push(chunk);
         }
 
-        if self.start + self.chk_len >= data.len() && self.start != data.len() {
-            self.chk_len = data.len() - self.start;
+        if self.start + self.chk_len >= self.buf_len && self.start != self.buf_len {
+            self.chk_len = self.buf_len - self.start;
             chunks.push(Chunk::new(self.start, self.chk_len));
         }
 
         chunks
     }
 
-    fn generate_chunk(&mut self, data: &[u8]) -> Chunk {
-        if let Some(chunk) = self.check_border(data) {
+    fn generate_chunk(&mut self) -> Chunk {
+        if let Some(chunk) = self.check_border() {
             return chunk;
         }
 
         self.out_window
-            .copy_from_slice(&data[self.start..self.start + 8]);
+            .copy_from_slice(&self.buf[self.start..self.start + 8]);
         self.chk_len += 8;
         self.calculate_new_distance();
 
-        if let Some(chunk) = self.try_get_chunk(data, self.normal_size, MASK_S) {
+        if let Some(chunk) = self.try_get_chunk(self.normal_size, MASK_S) {
             return chunk;
         }
 
-        if let Some(chunk) = self.try_get_chunk(data, MAX_CHUNK_SIZE, MASK_L) {
+        if let Some(chunk) = self.try_get_chunk(MAX_CHUNK_SIZE, MASK_L) {
             return chunk;
         }
 
         self.make_chunk(0)
     }
 
-    fn try_get_chunk(&mut self, data: &[u8], size_limit: usize, mask: usize) -> Option<Chunk> {
+    fn try_get_chunk(&mut self, size_limit: usize, mask: usize) -> Option<Chunk> {
         while self.chk_len < size_limit {
-            if let Some(chunk) = self.check_border(data) {
+            if let Some(chunk) = self.check_border() {
                 return Some(chunk);
             }
 
             self.in_window
-                .copy_from_slice(&data[self.start + self.chk_len..self.start + self.chk_len + 8]);
+                .copy_from_slice(&self.buf[self.start + self.chk_len..self.start + self.chk_len + 8]);
 
             if self.in_window == self.out_window {
                 self.equal_window_count += 1;
@@ -143,6 +136,8 @@ impl Chunker {
             if (self.distance & mask) == 0 {
                 return Some(self.make_chunk(8));
             }
+
+            // self.distance = (self.distance << 1) + DISTANCE_MAP[BYTE][self.in_window[j] as usize];
             self.slide_one_byte(j);
         }
         None
@@ -176,12 +171,12 @@ impl Chunker {
         Chunk::new(pos, len)
     }
 
-    fn check_border(&mut self, data: &[u8]) -> Option<Chunk> {
-        if self.start + self.chk_len >= data.len() {
+    fn check_border(&mut self) -> Option<Chunk> {
+        if self.start + self.chk_len >= self.buf_len {
             let pos = self.start;
-            let len = data.len() - self.start;
+            let len = self.buf_len - self.start;
 
-            self.start = data.len();
+            self.start = self.buf_len;
 
             Some(Chunk::new(pos, len))
         } else {
@@ -190,7 +185,19 @@ impl Chunker {
     }
 }
 
-const DISTANCE_MAP: [[usize; 256]; 256] = [
+impl<'a> Iterator for Chunker<'a> {
+    type Item = Chunk;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.start == self.buf_len {
+            None
+        } else {
+            Some(self.generate_chunk())
+        }
+    }
+}
+
+static DISTANCE_MAP: [[usize; 256]; 256] = [
     [
         0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4,
         4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5,

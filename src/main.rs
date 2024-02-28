@@ -10,7 +10,7 @@ fn main() {
 fn test_chunker() {
     let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
 
-    let mut chunker = leap_based::Chunker::new(&buf);
+    let chunker = ultra::Chunker::new(&buf);
 
     let now = Instant::now();
     let mut chunks = Vec::new();
@@ -44,7 +44,7 @@ fn test_chunker() {
     dedup_info(&buf, chunks);
 }
 
-fn dedup_info(buf: &Vec<u8>, chunks: Vec<Chunk>) {
+fn dedup_info(buf: &[u8], chunks: Vec<Chunk>) {
     let chunks_len = chunks.len();
     let chunks_map: HashMap<_, usize> = HashMap::from_iter(chunks.into_iter().map(|chunk| {
         let hash = Sha3_256::digest(&buf[chunk.pos..chunk.pos + chunk.len]);
