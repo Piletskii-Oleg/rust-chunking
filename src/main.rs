@@ -1,8 +1,8 @@
 use chunking::{leap_based, ultra, Chunk};
+use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
-use std::time::Instant;
-use clap::Parser;
+use std::time::{Duration, Instant};
 
 fn main() {
     test_chunker();
@@ -16,7 +16,17 @@ struct Cli {
 
     /// Show deduplication info
     #[arg(short, long)]
-    show_info: bool
+    show_info: bool,
+
+    /// What algorithm to use on the file
+    #[arg(value_enum)]
+    algorithm: Algorithm
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
+enum Algorithm {
+    Ultra,
+    Leap
 }
 
 fn test_chunker() {
@@ -30,14 +40,10 @@ fn test_chunker() {
     };
     let buf = std::fs::read(path).expect("Unable to read file:");
 
-    let chunker = ultra::Chunker::new(&buf);
-
-    let now = Instant::now();
-    let mut chunks = Vec::new();
-    for chunk in chunker {
-        chunks.push(chunk);
-    }
-    let time = now.elapsed();
+    let (chunks, time) = match cli.algorithm {
+        Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf)),
+        Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf))
+    };
 
     let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
     assert_eq!(total_len, buf.len());
@@ -64,6 +70,16 @@ fn test_chunker() {
     if cli.show_info {
         dedup_info(&buf, chunks);
     }
+}
+
+fn chunk_file(chunker: impl Iterator<Item = Chunk>) -> (Vec<Chunk>, Duration) {
+    let now = Instant::now();
+    let mut chunks = Vec::new();
+    for chunk in chunker {
+        chunks.push(chunk); // TODO: allocation times are counted
+    }
+    let time = now.elapsed();
+    (chunks, time)
 }
 
 fn dedup_info(buf: &[u8], chunks: Vec<Chunk>) {
