@@ -2,13 +2,33 @@ use chunking::{leap_based, ultra, Chunk};
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::Instant;
+use clap::Parser;
 
 fn main() {
     test_chunker();
 }
 
+#[derive(clap::Parser)]
+struct Cli {
+    /// Path to the file to be deduplicated
+    #[arg(short, long)]
+    path: Option<String>,
+
+    /// Show deduplication info
+    #[arg(short, long)]
+    show_info: bool
+}
+
 fn test_chunker() {
-    let buf = std::fs::read("/home/olegp/projects/rust-chunking/ubuntu.iso").unwrap();
+    let cli = Cli::parse();
+
+    const DEFAULT_PATH: &str = "ubuntu.iso";
+    let path = if let Some(path) = cli.path {
+        path
+    } else {
+        DEFAULT_PATH.to_string()
+    };
+    let buf = std::fs::read(path).expect("Unable to read file:");
 
     let chunker = ultra::Chunker::new(&buf);
 
@@ -41,7 +61,9 @@ fn test_chunker() {
         buf.len() / time.as_millis() as usize / 1024
     );
 
-    dedup_info(&buf, chunks);
+    if cli.show_info {
+        dedup_info(&buf, chunks);
+    }
 }
 
 fn dedup_info(buf: &[u8], chunks: Vec<Chunk>) {

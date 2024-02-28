@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "0.8.5"
-rand_distr = "0.4.3"
-serde = { version = "1.0.130", features = ["derive"] }
-sha3 = "0.10.8"
+clap = { version = "4", features = ["derive"] }
+rand = "0.8"
+rand_distr = "0.4"
+sha3 = "0.10"
 
 [profile.release-with-info]
 inherits = "release"
