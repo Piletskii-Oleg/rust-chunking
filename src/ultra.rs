@@ -24,16 +24,6 @@ pub struct Chunker<'a> {
     equal_window_count: usize,
 }
 
-fn distance_map() -> Vec<Vec<usize>> {
-    (0u8..=255u8)
-        .map(|byte| {
-            (0u8..=255u8)
-                .map(|this_byte| (byte ^ this_byte).count_ones() as usize)
-                .collect()
-        })
-        .collect()
-}
-
 impl<'a> Chunker<'a> {
     pub fn new(buf: &'a [u8]) -> Self {
         Self {

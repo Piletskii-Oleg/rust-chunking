@@ -1,17 +1,13 @@
 mod cli;
 
+use crate::cli::{Algorithm, Cli};
 use chunking::{leap_based, ultra, Chunk};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use crate::cli::{Algorithm, Cli};
 
 fn main() {
-    test_chunker();
-}
-
-fn test_chunker() {
     let cli = Cli::parse();
 
     const DEFAULT_PATH: &str = "ubuntu.iso";
@@ -27,7 +23,7 @@ fn test_chunker() {
     };
     let (chunks, time) = match cli.algorithm {
         Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf)),
-        Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf))
+        Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf)),
     };
 
     let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();

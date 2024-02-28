@@ -10,7 +10,7 @@ pub struct Cli {
 
     /// What algorithm to use on the file
     #[arg(value_enum)]
-    pub algorithm: Algorithm
+    pub algorithm: Algorithm,
 }
 
 #[derive(clap::Args)]
@@ -28,5 +28,5 @@ pub struct Input {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum Algorithm {
     Ultra,
-    Leap
+    Leap,
 }
