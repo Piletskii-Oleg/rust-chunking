@@ -1,45 +1,30 @@
+mod cli;
+
 use chunking::{leap_based, ultra, Chunk};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use crate::cli::{Algorithm, Cli};
 
 fn main() {
     test_chunker();
-}
-
-#[derive(clap::Parser)]
-struct Cli {
-    /// Path to the file to be deduplicated
-    #[arg(short, long)]
-    path: Option<String>,
-
-    /// Show deduplication info
-    #[arg(short, long)]
-    show_info: bool,
-
-    /// What algorithm to use on the file
-    #[arg(value_enum)]
-    algorithm: Algorithm
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
-enum Algorithm {
-    Ultra,
-    Leap
 }
 
 fn test_chunker() {
     let cli = Cli::parse();
 
     const DEFAULT_PATH: &str = "ubuntu.iso";
-    let path = if let Some(path) = cli.path {
-        path
+    let buf = if let Some(size) = cli.input.generate {
+        generate_data(size)
     } else {
-        DEFAULT_PATH.to_string()
+        let path = if let Some(path) = cli.input.path {
+            path
+        } else {
+            DEFAULT_PATH.to_string()
+        };
+        std::fs::read(path).expect("Unable to read file:")
     };
-    let buf = std::fs::read(path).expect("Unable to read file:");
-
     let (chunks, time) = match cli.algorithm {
         Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf)),
         Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf))
@@ -48,6 +33,14 @@ fn test_chunker() {
     let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
     assert_eq!(total_len, buf.len());
 
+    print_info(&buf, &chunks, time);
+
+    if cli.dedup_ratio {
+        dedup_info(&buf, chunks);
+    }
+}
+
+fn print_info(buf: &[u8], chunks: &[Chunk], time: Duration) {
     println!(
         "Chunked file with size {}MB in {:?}",
         buf.len() / 1024 / 1024,
@@ -66,10 +59,6 @@ fn test_chunker() {
         "Speed: {} MB/s",
         buf.len() / time.as_millis() as usize / 1024
     );
-
-    if cli.show_info {
-        dedup_info(&buf, chunks);
-    }
 }
 
 fn chunk_file(chunker: impl Iterator<Item = Chunk>) -> (Vec<Chunk>, Duration) {
@@ -105,7 +94,8 @@ fn dedup_info(buf: &[u8], chunks: Vec<Chunk>) {
 }
 
 fn generate_data(size: usize) -> Vec<u8> {
-    (0..size).map(|_| rand::random::<u8>()).collect()
+    let bytes = size * 1024 * 1024;
+    (0..bytes).map(|_| rand::random::<u8>()).collect()
 }
 
 fn mode(numbers: &[usize]) -> usize {
