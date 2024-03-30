@@ -25,6 +25,7 @@ pub struct Chunker<'a> {
     buf: &'a [u8],
     position: usize,
     chunk_start: usize,
+    has_cut: bool,
 }
 
 impl<'a> Chunker<'a> {
@@ -36,6 +37,7 @@ impl<'a> Chunker<'a> {
             buf,
             position: MIN_CHUNK_SIZE,
             chunk_start: 0,
+            has_cut: false,
         }
     }
 
@@ -169,7 +171,16 @@ impl Iterator for Chunker<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.position == self.buf.len() {
-            return None;
+            return if self.has_cut {
+                None
+            } else {
+                self.has_cut = true;
+                let chunk = Chunk::new(
+                    self.chunk_start,
+                    self.position - self.chunk_start,
+                );
+                Some(chunk)
+            }
         }
 
         while self.position < self.buf.len() {
@@ -200,6 +211,7 @@ impl Iterator for Chunker<'_> {
         }
 
         self.position = self.buf.len();
+        self.has_cut = true;
         Some(Chunk::new(
             self.chunk_start,
             self.position - self.chunk_start,
