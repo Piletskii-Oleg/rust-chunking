@@ -17,9 +17,9 @@ inherits = "release"
 debug = true
 
 [features]
-bin = ["clap"]
+cli = ["clap"]
 
 [[bin]]
-name = "run"
-required-features = ["bin"]
+name = "filetest"
+required-features = ["cli"]
 
