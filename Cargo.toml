@@ -15,3 +15,11 @@ sha3 = "0.10"
 [profile.release-with-info]
 inherits = "release"
 debug = true
+
+[features]
+bin = ["clap"]
+
+[[bin]]
+name = "run"
+required-features = ["bin"]
+
