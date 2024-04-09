@@ -1,4 +1,5 @@
 use crate::Chunk;
+use once_cell::sync::Lazy;
 use rand::prelude::ThreadRng;
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
@@ -15,7 +16,7 @@ const WINDOW_MATRIX_SHIFT: usize = 42; // WINDOW_MATRIX_SHIFT * 4 < WINDOW_SIZE 
 const MATRIX_WIDTH: usize = 8;
 const MATRIX_HEIGHT: usize = 255;
 
-static EF_MATRIX: Vec<Vec<u8>> = Chunker::create_ef_matrix();
+static EF_MATRIX: Lazy<Vec<Vec<u8>>> = Lazy::new(Chunker::create_ef_matrix);
 
 enum PointStatus {
     Ok,
@@ -173,12 +174,9 @@ impl Iterator for Chunker<'_> {
                 None
             } else {
                 self.has_cut = true;
-                let chunk = Chunk::new(
-                    self.chunk_start,
-                    self.position - self.chunk_start,
-                );
+                let chunk = Chunk::new(self.chunk_start, self.position - self.chunk_start);
                 Some(chunk)
-            }
+            };
         }
 
         while self.position < self.buf.len() {
