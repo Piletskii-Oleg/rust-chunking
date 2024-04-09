@@ -15,13 +15,14 @@ const WINDOW_MATRIX_SHIFT: usize = 42; // WINDOW_MATRIX_SHIFT * 4 < WINDOW_SIZE 
 const MATRIX_WIDTH: usize = 8;
 const MATRIX_HEIGHT: usize = 255;
 
+static EF_MATRIX: Vec<Vec<u8>> = Chunker::create_ef_matrix();
+
 enum PointStatus {
     Ok,
     Unsatisfied(usize),
 }
 
 pub struct Chunker<'a> {
-    ef_matrix: Vec<Vec<u8>>,
     buf: &'a [u8],
     position: usize,
     chunk_start: usize,
@@ -30,10 +31,7 @@ pub struct Chunker<'a> {
 
 impl<'a> Chunker<'a> {
     pub fn new(buf: &'a [u8]) -> Self {
-        let ef_matrix = Self::create_ef_matrix();
-
         Chunker {
-            ef_matrix,
             buf,
             position: MIN_CHUNK_SIZE,
             chunk_start: 0,
@@ -160,7 +158,7 @@ impl<'a> Chunker<'a> {
         (0..5)
             .map(|index| window[WINDOW_SIZE - 1 - index * WINDOW_MATRIX_SHIFT]) // init array
             .enumerate()
-            .map(|(index, byte)| self.ef_matrix[byte as usize][index]) // get elements from ef_matrix
+            .map(|(index, byte)| EF_MATRIX[byte as usize][index]) // get elements from ef_matrix
             .fold(0u8, |acc, value| acc ^ value)
             != 0
     }
