@@ -30,7 +30,9 @@ const WIN_SLIDE_POS: usize = MIN_SIZE - WIN_SLIDE_OFFSET;
 pub struct RabinChunker<'a> {
     buf: &'a [u8],
     params: ChunkerParams, // chunker parameters
-    pos: usize
+    pos: usize,
+    chunk_start: usize,
+    len: usize
 }
 
 /// Pre-calculated chunker parameters
@@ -47,7 +49,52 @@ impl<'a> RabinChunker<'a> {
             buf,
             pos: 0,
             params: ChunkerParams::new(),
+            chunk_start: 0,
+            len: buf.len()
         }
+    }
+
+    fn find_border(&mut self) -> Option<usize> {
+        let search_range = self.pos..self.len;
+
+        if search_range.is_empty() {
+            return None;
+        }
+
+        self.pos += WIN_SLIDE_POS;
+        let mut chunk_len = WIN_SLIDE_POS;
+
+        let mut win = [0u8; WIN_SIZE];
+        let mut win_idx = 0;
+        let mut roll_hash = 0;
+
+        while self.pos < self.len {
+            let ch = self.buf[self.pos];
+            let out = win[win_idx] as usize;
+            let pushed_out = self.params.out_map[out];
+
+            // calculate Rabin rolling hash
+            roll_hash = (roll_hash * PRIME) & MASK;
+            roll_hash += u64::from(ch);
+            roll_hash = roll_hash.wrapping_sub(pushed_out) & MASK;
+
+            // forward circle window
+            win[win_idx] = ch;
+            win_idx = (win_idx + 1) & WIN_MASK;
+
+            chunk_len += 1;
+            self.pos += 1;
+
+            if chunk_len >= MIN_SIZE {
+                let checksum = roll_hash ^ self.params.ir[out];
+
+                if (checksum & CUT_MASK) == 0 || chunk_len >= MAX_SIZE {
+                    return Some(chunk_len);
+                }
+            }
+        }
+
+        Some(chunk_len)
     }
 }
 
@@ -55,59 +102,14 @@ impl<'a> Iterator for RabinChunker<'a> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let search_range = self.pos..self.buf.len();
-        if let Some(length) = find_border(&self.buf[search_range], &self.params) {
-            let chunk = Chunk::new(self.pos, length);
+        self.chunk_start = self.pos;
 
-            self.pos += length;
-
-            Some(chunk)
+        if let Some(length) = self.find_border() {
+            Some(Chunk::new(self.chunk_start, length))
         } else {
             None
         }
     }
-}
-
-fn find_border(buf: &[u8], params: &ChunkerParams) -> Option<usize> {
-    if buf.is_empty() {
-        return None;
-    }
-
-    let remaining = min(MAX_SIZE, buf.len());
-    let mut pos = WIN_SLIDE_POS;
-    let mut chunk_len = WIN_SLIDE_POS;
-
-    let mut win = [0u8; WIN_SIZE];
-    let mut win_idx = 0;
-    let mut roll_hash = 0;
-
-    while pos < remaining {
-        let ch = buf[pos];
-        let out = win[win_idx] as usize;
-        let pushed_out = params.out_map[out];
-
-        // calculate Rabin rolling hash
-        roll_hash = (roll_hash * PRIME) & MASK;
-        roll_hash += u64::from(ch);
-        roll_hash = roll_hash.wrapping_sub(pushed_out) & MASK;
-
-        // forward circle window
-        win[win_idx] = ch;
-        win_idx = (win_idx + 1) & WIN_MASK;
-
-        chunk_len += 1;
-        pos += 1;
-
-        if chunk_len >= MIN_SIZE {
-            let checksum = roll_hash ^ params.ir[out];
-
-            if (checksum & CUT_MASK) == 0 || chunk_len >= MAX_SIZE {
-                return Some(chunk_len);
-            }
-        }
-    }
-
-    Some(chunk_len)
 }
 
 impl ChunkerParams {
