@@ -55,12 +55,18 @@ impl<'a> Chunker<'a> {
     }
 
     fn find_border(&mut self, buf: &[u8]) -> Option<(u64, usize)> {
-        if buf.len() < MIN_CHUNK_SIZE {
+        if buf.is_empty() {
             return None;
         }
 
-        let remaining = min(MAX_CHUNK_SIZE, buf.len());
-        let center = min(AVG_CHUNK_SIZE, buf.len());
+        let len = buf.len();
+        if len < MIN_CHUNK_SIZE {
+            let length = self.buf.len() - self.pos;
+            return Some((0, length));
+        }
+
+        let remaining = min(MAX_CHUNK_SIZE, len);
+        let center = min(AVG_CHUNK_SIZE, len);
 
         let mut breakpoint = remaining;
         let mut breakpoint_flag = false;
@@ -134,9 +140,7 @@ impl<'a> Iterator for Chunker<'a> {
             self.shelved = None;
 
             let chunk = Chunk::new(self.pos, length);
-
             self.pos += length;
-
             return Some(chunk);
         }
 

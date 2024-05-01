@@ -51,8 +51,14 @@ impl<'a> Chunker<'a> {
     }
 
     fn find_border(&mut self) -> Option<usize> {
-        if self.pos == self.len {
+        if self.len == self.pos {
             return None;
+        }
+
+        if self.len - self.pos < MIN_SIZE {
+            let pos = self.pos;
+            self.pos = self.len;
+            return Some(self.len - pos);
         }
 
         self.pos += WIN_SLIDE_POS;
