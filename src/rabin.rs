@@ -34,7 +34,7 @@ pub struct Chunker<'a> {
 
 /// Pre-calculated chunker parameters
 #[derive(Clone)]
-struct ChunkerParams {
+pub struct ChunkerParams {
     poly_pow: u64,     // poly power
     out_map: Vec<u64>, // pre-computed out byte map, length is 256
     ir: Vec<u64>,      // irreducible polynomial, length is 256
@@ -46,6 +46,15 @@ impl<'a> Chunker<'a> {
             buf,
             pos: 0,
             params: ChunkerParams::new(),
+            len: buf.len(),
+        }
+    }
+
+    pub fn with_params(buf: &'a [u8], params: ChunkerParams) -> Self {
+        Self {
+            buf,
+            params,
+            pos: 0,
             len: buf.len(),
         }
     }
@@ -96,6 +105,10 @@ impl<'a> Chunker<'a> {
 
         Some(chunk_len)
     }
+
+    pub fn give_params(self) -> ChunkerParams {
+        self.params
+    }
 }
 
 impl<'a> Iterator for Chunker<'a> {
@@ -109,7 +122,7 @@ impl<'a> Iterator for Chunker<'a> {
 }
 
 impl ChunkerParams {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let mut cp = ChunkerParams::default();
 
         // calculate poly power, it is actually PRIME ^ WIN_SIZE
