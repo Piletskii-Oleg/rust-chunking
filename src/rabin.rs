@@ -32,7 +32,7 @@ pub struct RabinChunker<'a> {
     params: ChunkerParams, // chunker parameters
     pos: usize,
     chunk_start: usize,
-    len: usize
+    len: usize,
 }
 
 /// Pre-calculated chunker parameters
@@ -55,9 +55,7 @@ impl<'a> RabinChunker<'a> {
     }
 
     fn find_border(&mut self) -> Option<usize> {
-        let search_range = self.pos..self.len;
-
-        if search_range.is_empty() {
+        if self.pos == self.len {
             return None;
         }
 
@@ -102,10 +100,10 @@ impl<'a> Iterator for RabinChunker<'a> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.chunk_start = self.pos;
+        let start = self.pos;
 
         if let Some(length) = self.find_border() {
-            Some(Chunk::new(self.chunk_start, length))
+            Some(Chunk::new(start, length))
         } else {
             None
         }
