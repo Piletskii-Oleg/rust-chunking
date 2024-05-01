@@ -21,6 +21,7 @@ fn main() {
     let (chunks, time) = match cli.algorithm {
         Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf)),
         Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf)),
+        Algorithm::Rabin => chunk_file(chunking::rabin::RabinChunker::new(&buf))
     };
 
     let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
@@ -136,4 +137,5 @@ pub struct Input {
 pub enum Algorithm {
     Ultra,
     Leap,
+    Rabin
 }
