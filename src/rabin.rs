@@ -26,7 +26,7 @@ const WIN_MASK: usize = WIN_SIZE - 1;
 const WIN_SLIDE_OFFSET: usize = 64;
 const WIN_SLIDE_POS: usize = MIN_SIZE - WIN_SLIDE_OFFSET;
 
-pub struct RabinChunker<'a> {
+pub struct Chunker<'a> {
     buf: &'a [u8],
     params: ChunkerParams, // chunker parameters
     pos: usize,
@@ -42,9 +42,9 @@ struct ChunkerParams {
     ir: Vec<u64>,      // irreducible polynomial, length is 256
 }
 
-impl<'a> RabinChunker<'a> {
-    pub fn new(buf: &'a [u8]) -> RabinChunker {
-        RabinChunker {
+impl<'a> Chunker<'a> {
+    pub fn new(buf: &'a [u8]) -> Chunker {
+        Chunker {
             buf,
             pos: 0,
             params: ChunkerParams::new(),
@@ -95,7 +95,7 @@ impl<'a> RabinChunker<'a> {
     }
 }
 
-impl<'a> Iterator for RabinChunker<'a> {
+impl<'a> Iterator for Chunker<'a> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
