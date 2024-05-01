@@ -1,4 +1,4 @@
-use chunking::{leap_based, ultra, rabin, Chunk, supercdc};
+use chunking::{leap_based, rabin, supercdc, ultra, Chunk};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
@@ -22,17 +22,30 @@ fn main() {
         Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf)),
         Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf)),
         Algorithm::Rabin => chunk_file(rabin::Chunker::new(&buf)),
-        Algorithm::Super => chunk_file(supercdc::Chunker::new(&buf))
+        Algorithm::Super => chunk_file(supercdc::Chunker::new(&buf)),
     };
 
-    let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
-    assert_eq!(total_len, buf.len());
+    check_chunks_length(&chunks, buf.len());
+    check_chunk_correctness(&chunks);
 
     print_info(&buf, &chunks, time);
 
     if cli.dedup_ratio {
         dedup_info(&buf, chunks);
     }
+}
+
+fn check_chunk_correctness(chunks: &[Chunk]) {
+    chunks
+        .iter()
+        .skip(1)
+        .zip(chunks.iter().take(chunks.len() - 1))
+        .for_each(|(next, prev)| assert_eq!(prev.pos + prev.len, next.pos))
+}
+
+fn check_chunks_length(chunks: &[Chunk], actual_len: usize) {
+    let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
+    assert_eq!(total_len, actual_len);
 }
 
 fn print_info(buf: &[u8], chunks: &[Chunk], time: Duration) {
@@ -139,5 +152,5 @@ pub enum Algorithm {
     Ultra,
     Leap,
     Rabin,
-    Super
+    Super,
 }

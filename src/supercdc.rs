@@ -1,6 +1,6 @@
+use crate::Chunk;
 use std::cmp::min;
 use std::collections::HashMap;
-use crate::Chunk;
 
 const MIN_CHUNK_SIZE: usize = 1024 * 4;
 const AVG_CHUNK_SIZE: usize = 1024 * 8;
@@ -21,7 +21,7 @@ pub struct Chunker<'a> {
     last_hash: u64,
     record_last_hash: bool,
     pos: usize,
-    shelved: Option<usize>
+    shelved: Option<usize>,
 }
 
 impl<'a> Chunker<'a> {
@@ -32,7 +32,7 @@ impl<'a> Chunker<'a> {
             records: Default::default(),
             last_hash: 0,
             record_last_hash: false,
-            shelved: None
+            shelved: None,
         }
     }
 
@@ -72,8 +72,8 @@ impl<'a> Chunker<'a> {
         let mut gear;
 
         for index in 1..16 {
-            fingerprint = fingerprint
-                .wrapping_add(GEAR[buf[MIN_CHUNK_SIZE - index] as usize] << index);
+            fingerprint =
+                fingerprint.wrapping_add(GEAR[buf[MIN_CHUNK_SIZE - index] as usize] << index);
             pos += 1;
         }
 

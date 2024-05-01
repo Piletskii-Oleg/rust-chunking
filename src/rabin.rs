@@ -1,4 +1,3 @@
-use std::fmt::{Debug};
 use crate::Chunk;
 
 // implementation taken from zbox
@@ -30,7 +29,6 @@ pub struct Chunker<'a> {
     buf: &'a [u8],
     params: ChunkerParams, // chunker parameters
     pos: usize,
-    chunk_start: usize,
     len: usize,
 }
 
@@ -48,8 +46,7 @@ impl<'a> Chunker<'a> {
             buf,
             pos: 0,
             params: ChunkerParams::new(),
-            chunk_start: 0,
-            len: buf.len()
+            len: buf.len(),
         }
     }
 
@@ -101,11 +98,7 @@ impl<'a> Iterator for Chunker<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let start = self.pos;
 
-        if let Some(length) = self.find_border() {
-            Some(Chunk::new(start, length))
-        } else {
-            None
-        }
+        self.find_border().map(|length| Chunk::new(start, length))
     }
 }
 

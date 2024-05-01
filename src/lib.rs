@@ -1,7 +1,7 @@
 pub mod leap_based;
-pub mod ultra;
 pub mod rabin;
 pub mod supercdc;
+pub mod ultra;
 
 #[derive(Debug)]
 pub struct Chunk {
