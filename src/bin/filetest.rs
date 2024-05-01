@@ -1,4 +1,4 @@
-use chunking::{leap_based, ultra, rabin, Chunk};
+use chunking::{leap_based, ultra, rabin, Chunk, supercdc};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
@@ -21,7 +21,8 @@ fn main() {
     let (chunks, time) = match cli.algorithm {
         Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf)),
         Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf)),
-        Algorithm::Rabin => chunk_file(rabin::Chunker::new(&buf))
+        Algorithm::Rabin => chunk_file(rabin::Chunker::new(&buf)),
+        Algorithm::Super => chunk_file(supercdc::Chunker::new(&buf))
     };
 
     let total_len = chunks.iter().map(|chunk| chunk.len).sum::<usize>();
@@ -137,5 +138,6 @@ pub struct Input {
 pub enum Algorithm {
     Ultra,
     Leap,
-    Rabin
+    Rabin,
+    Super
 }
