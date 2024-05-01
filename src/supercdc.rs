@@ -36,6 +36,17 @@ impl<'a> Chunker<'a> {
         }
     }
 
+    pub fn with_records(buf: &'a [u8], records: HashMap<u64, usize>) -> Self {
+        Self {
+            buf,
+            records,
+            last_hash: 0,
+            record_last_hash: false,
+            pos: 0,
+            shelved: None,
+        }
+    }
+
     fn use_record_map(&mut self, hash: u64, length: usize) -> Option<usize> {
         if self.record_last_hash {
             self.records.insert(self.last_hash, length);
@@ -129,6 +140,10 @@ impl<'a> Chunker<'a> {
         }
 
         Some((breakpoint_gear, breakpoint))
+    }
+
+    pub fn give_records(self) -> HashMap<u64, usize> {
+        self.records
     }
 }
 
