@@ -22,7 +22,7 @@ pub struct Chunker<'a> {
     record_last_hash: bool,
     pos: usize,
     shelved: Option<usize>,
-    sizes: SizeParams
+    sizes: SizeParams,
 }
 
 impl<'a> Chunker<'a> {
@@ -42,7 +42,7 @@ impl<'a> Chunker<'a> {
             last_hash: 0,
             record_last_hash: false,
             shelved: None,
-            sizes: Self::default_sizes()
+            sizes: Self::default_sizes(),
         }
     }
 
@@ -54,7 +54,7 @@ impl<'a> Chunker<'a> {
             record_last_hash: false,
             pos: 0,
             shelved: None,
-            sizes
+            sizes,
         }
     }
 

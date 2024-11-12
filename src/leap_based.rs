@@ -20,7 +20,7 @@ pub struct Chunker<'a> {
     position: usize,
     chunk_start: usize,
     has_cut: bool,
-    sizes: SizeParams
+    sizes: SizeParams,
 }
 
 impl<'a> Chunker<'a> {
@@ -38,7 +38,7 @@ impl<'a> Chunker<'a> {
             position: sizes.min,
             chunk_start: 0,
             has_cut: false,
-            sizes
+            sizes,
         }
     }
 
