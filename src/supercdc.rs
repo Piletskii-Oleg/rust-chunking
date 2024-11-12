@@ -1,4 +1,4 @@
-use crate::Chunk;
+use crate::{Chunk, SizeParams};
 use std::cmp::min;
 use std::collections::HashMap;
 
@@ -22,9 +22,18 @@ pub struct Chunker<'a> {
     record_last_hash: bool,
     pos: usize,
     shelved: Option<usize>,
+    sizes: SizeParams
 }
 
 impl<'a> Chunker<'a> {
+    pub fn default_sizes() -> SizeParams {
+        SizeParams {
+            min: MIN_CHUNK_SIZE,
+            avg: AVG_CHUNK_SIZE,
+            max: MAX_CHUNK_SIZE,
+        }
+    }
+
     pub fn new(buf: &'a [u8]) -> Self {
         Self {
             buf,
@@ -33,10 +42,11 @@ impl<'a> Chunker<'a> {
             last_hash: 0,
             record_last_hash: false,
             shelved: None,
+            sizes: Self::default_sizes()
         }
     }
 
-    pub fn with_records(buf: &'a [u8], records: HashMap<u64, usize>) -> Self {
+    pub fn with_records(buf: &'a [u8], records: HashMap<u64, usize>, sizes: SizeParams) -> Self {
         Self {
             buf,
             records,
@@ -44,6 +54,7 @@ impl<'a> Chunker<'a> {
             record_last_hash: false,
             pos: 0,
             shelved: None,
+            sizes
         }
     }
 
@@ -71,26 +82,26 @@ impl<'a> Chunker<'a> {
         }
 
         let len = buf.len();
-        if len < MIN_CHUNK_SIZE {
+        if len < self.sizes.min {
             let length = self.buf.len() - self.pos;
             return Some((0, length));
         }
 
-        let remaining = min(MAX_CHUNK_SIZE, len);
-        let center = min(AVG_CHUNK_SIZE, len);
+        let remaining = min(self.sizes.max, len);
+        let center = min(self.sizes.avg, len);
 
         let mut breakpoint = remaining;
         let mut breakpoint_flag = false;
 
         let mut fingerprint: u64 = 0;
-        let mut pos: usize = MIN_CHUNK_SIZE / 2;
+        let mut pos: usize = self.sizes.min / 2;
 
         let mut breakpoint_gear = 0;
         let mut gear;
 
         for index in 1..16 {
             fingerprint =
-                fingerprint.wrapping_add(GEAR[buf[MIN_CHUNK_SIZE - index] as usize] << index);
+                fingerprint.wrapping_add(GEAR[buf[self.sizes.min - index] as usize] << index);
             pos += 1;
         }
 

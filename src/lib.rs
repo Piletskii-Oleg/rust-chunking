@@ -40,6 +40,10 @@ impl SizeParams {
     pub fn rabin_default() -> Self {
         rabin::Chunker::default_sizes()
     }
+
+    pub fn super_default() -> Self {
+        supercdc::Chunker::default_sizes()
+    }
 }
 
 impl Default for SizeParams {
