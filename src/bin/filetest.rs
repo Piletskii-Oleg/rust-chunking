@@ -1,4 +1,4 @@
-use chunking::{leap_based, rabin, supercdc, ultra, Chunk};
+use chunking::{leap_based, rabin, supercdc, ultra, Chunk, SizeParams};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
@@ -19,8 +19,8 @@ fn main() {
         std::fs::read(path).expect("Unable to read file:")
     };
     let (chunks, time) = match cli.algorithm {
-        Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf)),
-        Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf)),
+        Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf, SizeParams::ultra_default())),
+        Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf, SizeParams::leap_default())),
         Algorithm::Rabin => chunk_file(rabin::Chunker::new(&buf)),
         Algorithm::Super => chunk_file(supercdc::Chunker::new(&buf)),
     };
