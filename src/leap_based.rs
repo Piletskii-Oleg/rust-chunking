@@ -1,4 +1,4 @@
-use crate::Chunk;
+use crate::{Chunk, SizeParams};
 
 const MIN_CHUNK_SIZE: usize = 1024 * 8;
 const MAX_CHUNK_SIZE: usize = 1024 * 16;
@@ -20,15 +20,25 @@ pub struct Chunker<'a> {
     position: usize,
     chunk_start: usize,
     has_cut: bool,
+    sizes: SizeParams
 }
 
 impl<'a> Chunker<'a> {
-    pub fn new(buf: &'a [u8]) -> Self {
+    pub fn default_sizes() -> SizeParams {
+        SizeParams {
+            min: MIN_CHUNK_SIZE,
+            avg: (MAX_CHUNK_SIZE + MIN_CHUNK_SIZE) / 2,
+            max: MAX_CHUNK_SIZE,
+        }
+    }
+
+    pub fn new(buf: &'a [u8], sizes: SizeParams) -> Self {
         Chunker {
             buf,
-            position: MIN_CHUNK_SIZE,
+            position: sizes.min,
             chunk_start: 0,
             has_cut: false,
+            sizes
         }
     }
 
@@ -82,12 +92,12 @@ impl Iterator for Chunker<'_> {
         }
 
         while self.position < self.buf.len() {
-            if self.position - self.chunk_start > MAX_CHUNK_SIZE {
+            if self.position - self.chunk_start > self.sizes.max {
                 let pos = self.chunk_start;
                 let len = self.position - self.chunk_start;
 
                 self.chunk_start = self.position;
-                self.position += MIN_CHUNK_SIZE;
+                self.position += self.sizes.min;
 
                 return Some(Chunk::new(pos, len));
             } else {
@@ -97,7 +107,7 @@ impl Iterator for Chunker<'_> {
                         let len = self.position - self.chunk_start;
 
                         self.chunk_start = self.position;
-                        self.position += MIN_CHUNK_SIZE;
+                        self.position += self.sizes.min;
 
                         return Some(Chunk::new(pos, len));
                     }

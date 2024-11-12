@@ -44,9 +44,9 @@ pub struct ChunkerParams {
 impl<'a> Chunker<'a> {
     pub fn default_sizes() -> SizeParams {
         SizeParams {
-            min_size: MIN_SIZE,
-            avg_size: AVG_SIZE,
-            max_size: MAX_SIZE,
+            min: MIN_SIZE,
+            avg: AVG_SIZE,
+            max: MAX_SIZE,
         }
     }
 
@@ -75,7 +75,7 @@ impl<'a> Chunker<'a> {
             return None;
         }
 
-        if self.len - self.pos < self.sizes.min_size {
+        if self.len - self.pos < self.sizes.min {
             let pos = self.pos;
             self.pos = self.len;
             return Some(self.len - pos);
@@ -105,10 +105,10 @@ impl<'a> Chunker<'a> {
             chunk_len += 1;
             self.pos += 1;
 
-            if chunk_len >= self.sizes.min_size {
+            if chunk_len >= self.sizes.min {
                 let checksum = roll_hash ^ self.params.ir[out];
 
-                if (checksum & CUT_MASK) == 0 || chunk_len >= self.sizes.max_size {
+                if (checksum & CUT_MASK) == 0 || chunk_len >= self.sizes.max {
                     return Some(chunk_len);
                 }
             }

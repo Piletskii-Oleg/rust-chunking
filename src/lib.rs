@@ -19,27 +19,35 @@ impl Chunk {
 /// min, average and max size of chunks.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct SizeParams {
-    pub min_size: usize,
-    pub avg_size: usize,
-    pub max_size: usize,
+    pub min: usize,
+    pub avg: usize,
+    pub max: usize,
 }
 
 impl SizeParams {
-    pub fn new(min_size: usize, avg_size: usize, max_size: usize) -> Self {
+    pub fn new(min: usize, avg: usize, max: usize) -> Self {
         Self {
-            min_size,
-            avg_size,
-            max_size,
+            min,
+            avg,
+            max,
         }
+    }
+
+    pub fn leap_default() -> Self {
+        leap_based::Chunker::default_sizes()
+    }
+
+    pub fn rabin_default() -> Self {
+        rabin::Chunker::default_sizes()
     }
 }
 
 impl Default for SizeParams {
     fn default() -> Self {
         Self {
-            min_size: 2048,
-            avg_size: 4096,
-            max_size: 8192,
+            min: 2048,
+            avg: 4096,
+            max: 8192,
         }
     }
 }
