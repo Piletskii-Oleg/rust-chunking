@@ -1,4 +1,4 @@
-use crate::Chunk;
+use crate::{Chunk, SizeParams};
 
 // implementation taken from zbox
 // https://github.com/zboxfs/zbox
@@ -30,6 +30,7 @@ pub struct Chunker<'a> {
     params: ChunkerParams, // chunker parameters
     pos: usize,
     len: usize,
+    sizes: SizeParams,
 }
 
 /// Pre-calculated chunker parameters
@@ -41,21 +42,31 @@ pub struct ChunkerParams {
 }
 
 impl<'a> Chunker<'a> {
+    pub fn default_sizes() -> SizeParams {
+        SizeParams {
+            min_size: MIN_SIZE,
+            avg_size: AVG_SIZE,
+            max_size: MAX_SIZE,
+        }
+    }
+
     pub fn new(buf: &'a [u8]) -> Chunker {
         Chunker {
             buf,
             pos: 0,
             params: ChunkerParams::new(),
             len: buf.len(),
+            sizes: Self::default_sizes(),
         }
     }
 
-    pub fn with_params(buf: &'a [u8], params: ChunkerParams) -> Self {
+    pub fn with_params(buf: &'a [u8], params: ChunkerParams, sizes: SizeParams) -> Self {
         Self {
             buf,
             params,
             pos: 0,
             len: buf.len(),
+            sizes,
         }
     }
 
@@ -64,7 +75,7 @@ impl<'a> Chunker<'a> {
             return None;
         }
 
-        if self.len - self.pos < MIN_SIZE {
+        if self.len - self.pos < self.sizes.min_size {
             let pos = self.pos;
             self.pos = self.len;
             return Some(self.len - pos);
@@ -94,10 +105,10 @@ impl<'a> Chunker<'a> {
             chunk_len += 1;
             self.pos += 1;
 
-            if chunk_len >= MIN_SIZE {
+            if chunk_len >= self.sizes.min_size {
                 let checksum = roll_hash ^ self.params.ir[out];
 
-                if (checksum & CUT_MASK) == 0 || chunk_len >= MAX_SIZE {
+                if (checksum & CUT_MASK) == 0 || chunk_len >= self.sizes.max_size {
                     return Some(chunk_len);
                 }
             }
