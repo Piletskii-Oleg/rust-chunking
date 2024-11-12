@@ -26,11 +26,7 @@ pub struct SizeParams {
 
 impl SizeParams {
     pub fn new(min: usize, avg: usize, max: usize) -> Self {
-        Self {
-            min,
-            avg,
-            max,
-        }
+        Self { min, avg, max }
     }
 
     pub fn leap_default() -> Self {
@@ -44,14 +40,8 @@ impl SizeParams {
     pub fn super_default() -> Self {
         supercdc::Chunker::default_sizes()
     }
-}
 
-impl Default for SizeParams {
-    fn default() -> Self {
-        Self {
-            min: 2048,
-            avg: 4096,
-            max: 8192,
-        }
+    pub fn ultra_default() -> Self {
+        ultra::Chunker::default_sizes()
     }
 }

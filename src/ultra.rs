@@ -1,4 +1,4 @@
-use crate::Chunk;
+use crate::{Chunk, SizeParams};
 
 const KB: usize = 1024;
 const MIN_CHUNK_SIZE: usize = 2 * KB;
@@ -22,27 +22,37 @@ pub struct Chunker<'a> {
     chk_len: usize,
     distance: usize,
     equal_window_count: usize,
+    sizes: SizeParams,
 }
 
 impl<'a> Chunker<'a> {
-    pub fn new(buf: &'a [u8]) -> Self {
+    pub fn default_sizes() -> SizeParams {
+        SizeParams {
+            min: MIN_CHUNK_SIZE,
+            avg: NORMAL_CHUNK_SIZE,
+            max: MAX_CHUNK_SIZE,
+        }
+    }
+
+    pub fn new(buf: &'a [u8], sizes: SizeParams) -> Self {
         Self {
             buf,
             buf_len: buf.len(),
             out_window: [0u8; WINDOW_SIZE],
             in_window: [0u8; WINDOW_SIZE],
-            normal_size: NORMAL_CHUNK_SIZE,
+            normal_size: sizes.avg,
             start: 0,
-            chk_len: MIN_CHUNK_SIZE,
+            chk_len: sizes.min,
             distance: 0,
             equal_window_count: 0,
+            sizes,
         }
     }
 
     pub fn generate_chunks(&mut self) -> Vec<Chunk> {
         let mut chunks: Vec<Chunk> = vec![];
-        self.normal_size = NORMAL_CHUNK_SIZE;
-        if self.buf_len <= MIN_CHUNK_SIZE {
+        self.normal_size = self.sizes.avg;
+        if self.buf_len <= self.sizes.min {
             return vec![Chunk::new(0, self.buf_len)];
         }
 
@@ -83,7 +93,7 @@ impl<'a> Chunker<'a> {
             return chunk;
         }
 
-        if let Some(chunk) = self.try_get_chunk(MAX_CHUNK_SIZE, MASK_L) {
+        if let Some(chunk) = self.try_get_chunk(self.sizes.max, MASK_L) {
             return chunk;
         }
 
@@ -156,7 +166,7 @@ impl<'a> Chunker<'a> {
         let len = self.chk_len;
 
         self.start += self.chk_len;
-        self.chk_len = MIN_CHUNK_SIZE;
+        self.chk_len = self.sizes.min;
 
         Chunk::new(pos, len)
     }
