@@ -31,6 +31,7 @@ pub struct Chunker<'a> {
     pos: usize,
     len: usize,
     sizes: SizeParams,
+    win_slide_pos: usize
 }
 
 /// Pre-calculated chunker parameters
@@ -57,16 +58,20 @@ impl<'a> Chunker<'a> {
             params: ChunkerParams::new(),
             len: buf.len(),
             sizes: Self::default_sizes(),
+            win_slide_pos: WIN_SLIDE_POS
         }
     }
 
     pub fn with_params(buf: &'a [u8], params: ChunkerParams, sizes: SizeParams) -> Self {
+        debug_assert!(sizes.min > WIN_SLIDE_OFFSET);
+
         Self {
             buf,
             params,
             pos: 0,
             len: buf.len(),
             sizes,
+            win_slide_pos: sizes.min - WIN_SLIDE_OFFSET,
         }
     }
 
@@ -81,8 +86,8 @@ impl<'a> Chunker<'a> {
             return Some(self.len - pos);
         }
 
-        self.pos += WIN_SLIDE_POS;
-        let mut chunk_len = WIN_SLIDE_POS;
+        self.pos += self.win_slide_pos;
+        let mut chunk_len = self.win_slide_pos;
 
         let mut win = [0u8; WIN_SIZE];
         let mut win_idx = 0;
@@ -171,5 +176,23 @@ impl Default for ChunkerParams {
         ret.out_map.shrink_to_fit();
         ret.ir.shrink_to_fit();
         ret
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::rabin::{Chunker, ChunkerParams};
+    use crate::SizeParams;
+
+    #[test]
+    fn rabin_works_with_different_sizes() {
+        let sizes = SizeParams::new(3000, 50000, 100000);
+
+        let data = vec![3; 1024 * 1024 * 300];
+
+        let chunker = Chunker::with_params(&data, ChunkerParams::default(), sizes);
+        for chunk in chunker {
+            println!("{:?}", chunk);
+        }
     }
 }
