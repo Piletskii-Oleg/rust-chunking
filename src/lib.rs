@@ -25,7 +25,12 @@ pub struct SizeParams {
 }
 
 impl SizeParams {
+    /// Creates a new instance of `SizeParams` struct.
+    ///
+    /// Panics if not (min <= avg && avg <= max && min <= max).
     pub fn new(min: usize, avg: usize, max: usize) -> Self {
+        assert!(min <= avg && avg <= max && min <= max);
+
         Self { min, avg, max }
     }
 
