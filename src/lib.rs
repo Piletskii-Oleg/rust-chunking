@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 pub mod leap_based;
 pub mod rabin;
 pub mod supercdc;
@@ -48,5 +50,11 @@ impl SizeParams {
 
     pub fn ultra_default() -> Self {
         ultra::Chunker::default_sizes()
+    }
+}
+
+impl Display for SizeParams {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{}-{}", self.min, self.avg, self.max)
     }
 }
