@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 
 pub mod leap_based;
 pub mod rabin;
+pub mod seq;
 pub mod supercdc;
 pub mod ultra;
 
@@ -50,6 +51,10 @@ impl SizeParams {
 
     pub fn ultra_default() -> Self {
         ultra::Chunker::default_sizes()
+    }
+
+    pub fn seq_default() -> Self {
+        seq::Chunker::default_sizes()
     }
 }
 
