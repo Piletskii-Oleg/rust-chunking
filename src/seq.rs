@@ -7,6 +7,7 @@ pub enum OperationMode {
     Decreasing,
 }
 
+/// Contains parameters specified in the SeqCDC paper.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct Config {
     sequence_length: usize,
@@ -93,7 +94,7 @@ impl<'a> Chunker<'a> {
                     sequence_length = 0;
                     opposing_slope_count += 1;
                 }
-                Ordering::Equal => { continue },
+                Ordering::Equal => continue,
                 Ordering::Greater => sequence_length += 1,
             }
 
@@ -122,14 +123,14 @@ impl<'a> Chunker<'a> {
         }
 
         if self.len - self.position < self.sizes.min {
-            let pos = self.position;
+            let delta = self.len - self.position;
             self.position = self.len;
-            return Some(self.len - pos);
+            return Some(delta);
         }
 
         self.position += self.sizes.min;
 
-        let mut chunk_len = 0;
+        let mut chunk_len = self.sizes.min;
         let mut sequence_length = 0;
         let mut opposing_slope_count = 0;
 
@@ -137,12 +138,12 @@ impl<'a> Chunker<'a> {
             self.position += 1;
             chunk_len += 1;
 
-            match self.buf[self.position].cmp(&self.buf[self.position - 1]) {
+            match self.buf[self.position - 1].cmp(&self.buf[self.position - 2]) {
                 Ordering::Less => sequence_length += 1,
                 Ordering::Equal => continue,
                 Ordering::Greater => {
                     sequence_length = 0;
-                    opposing_slope_count += 1;
+                    opposing_slope_count += 1
                 }
             }
 
@@ -151,13 +152,23 @@ impl<'a> Chunker<'a> {
             }
             if opposing_slope_count == self.skip_trigger {
                 self.position += self.skip_size;
+                chunk_len += self.skip_size;
                 opposing_slope_count = 0;
             }
+        }
+
+        if self.position > self.len {
+            let delta = self.position - self.len;
+            self.position = self.len;
+            chunk_len -= delta;
         }
 
         Some(chunk_len)
     }
 
+    /// Returns next size of the chunk.
+    ///
+    /// Reads the info about operation mode from the chunker instance.
     fn find_border(&mut self) -> Option<usize> {
         match self.mode {
             OperationMode::Increasing => self.find_border_increasing(),
