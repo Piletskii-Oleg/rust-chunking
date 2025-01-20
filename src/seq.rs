@@ -73,9 +73,9 @@ impl<'a> Chunker<'a> {
         }
 
         if self.len - self.position < self.sizes.min {
-            let pos = self.position;
+            let delta = self.len - self.position;
             self.position = self.len;
-            return Some(self.len - pos);
+            return Some(delta);
         }
 
         self.position += self.sizes.min;
