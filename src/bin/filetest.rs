@@ -1,7 +1,10 @@
-use chunking::{leap_based, rabin, supercdc, ultra, Chunk, SizeParams};
+use chunking::seq::{Config, OperationMode};
+use chunking::{leap_based, rabin, seq, supercdc, ultra, Chunk, SizeParams};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
+use std::io::Write;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 fn main() {
@@ -18,11 +21,19 @@ fn main() {
         };
         std::fs::read(path).expect("Unable to read file:")
     };
+    println!("Data preparation finished.");
+
     let (chunks, time) = match cli.algorithm {
         Algorithm::Ultra => chunk_file(ultra::Chunker::new(&buf, SizeParams::ultra_default())),
         Algorithm::Leap => chunk_file(leap_based::Chunker::new(&buf, SizeParams::leap_default())),
         Algorithm::Rabin => chunk_file(rabin::Chunker::new(&buf)),
         Algorithm::Super => chunk_file(supercdc::Chunker::new(&buf)),
+        Algorithm::Seq => chunk_file(seq::Chunker::new(
+            &buf,
+            SizeParams::seq_default(),
+            OperationMode::Increasing,
+            Config::default(),
+        )),
     };
 
     check_chunks_length(&chunks, buf.len());
@@ -153,4 +164,5 @@ pub enum Algorithm {
     Leap,
     Rabin,
     Super,
+    Seq,
 }
