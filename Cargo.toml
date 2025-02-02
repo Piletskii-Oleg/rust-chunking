@@ -2,7 +2,12 @@
 name = "chunking"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Piletskii-Oleg/rust-chunking"
 description = "A collection of Content Defined Chunking algorithms"
+categories = ["algorithms"]
+keywords = ["deduplication", "chunking", "cdc"]
 default-run = "filetest"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
