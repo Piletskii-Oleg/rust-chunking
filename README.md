@@ -1,3 +1,11 @@
+[![Crates.io][crates-badge]][crates-url]
+[![MIT licensed][mit-badge]][mit-url]
+
+[crates-badge]: https://img.shields.io/crates/v/cdc-chunkers.svg
+[crates-url]: https://crates.io/crates/cdc-chunkers
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: https://github.com/Piletskii-Oleg/rust-chunking/blob/main/LICENSE
+
 # rust-chunking
 Content Based Chunking algorithms implementation:
 * RabinCDC (taken from [zbox][zbox])
@@ -13,7 +21,7 @@ Simple code to test an algorithm is provided in [filetest.rs](src/bin/filetest.r
 
 * Chunkers that work using `std::iter::Iterator` trait, giving out data about the source dataset 
 in the form of chunks.
-* Chunker sizes can be customized on creation.
+* Chunker sizes can be customized on creation. Default size values are provided.
 * Other parameters from corresponding papers can also be modified on chunker creation.
 
 ## Usage
@@ -25,9 +33,14 @@ fn main() {
     let data = vec![1; 1024 * 1024];
     
     let sizes = SizeParams::new(4096, 8192, 16384);
-    let chunker = ultra::Chunker::new(&data, sizes); 
+    let chunker = ultra::Chunker::new(&data, sizes);
   
     for chunk in chunker {
+        println!("start: {}, length: {}", chunk.pos, chunk.len);
+    }
+  
+    let default_leap = leap_based::Chunker::new(&data, SizeParams::leap_default());
+    for chunk in default_leap {
         println!("start: {}, length: {}", chunk.pos, chunk.len);
     }
 }

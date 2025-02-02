@@ -31,7 +31,7 @@ pub struct Chunker<'a> {
     pos: usize,
     len: usize,
     sizes: SizeParams,
-    win_slide_pos: usize
+    win_slide_pos: usize,
 }
 
 /// Pre-calculated chunker parameters
@@ -58,7 +58,7 @@ impl<'a> Chunker<'a> {
             params: ChunkerParams::new(),
             len: buf.len(),
             sizes: Self::default_sizes(),
-            win_slide_pos: WIN_SLIDE_POS
+            win_slide_pos: WIN_SLIDE_POS,
         }
     }
 

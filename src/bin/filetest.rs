@@ -1,10 +1,11 @@
-use chunking::seq::{Config, OperationMode};
-use chunking::{leap_based, rabin, seq, supercdc, ultra, Chunk, SizeParams};
+use cdc_chunkers::{
+    leap_based, rabin,
+    seq::{self, Config, OperationMode},
+    supercdc, ultra, Chunk, SizeParams,
+};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
-use std::io::Write;
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 fn main() {
