@@ -172,7 +172,7 @@ impl<'a> Chunker<'a> {
     }
 
     fn check_border(&mut self) -> Option<Chunk> {
-        if self.start + self.chk_len >= self.buf_len {
+        if self.start + self.chk_len + 8 >= self.buf_len {
             let pos = self.start;
             let len = self.buf_len - self.start;
 
