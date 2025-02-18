@@ -85,7 +85,7 @@ impl<'a> Chunker<'a> {
         let mut sequence_length = 0;
         let mut opposing_slope_count = 0;
 
-        while self.position < self.len {
+        while self.position < self.len && chunk_len < self.sizes.max {
             self.position += 1;
             chunk_len += 1;
 
@@ -134,7 +134,7 @@ impl<'a> Chunker<'a> {
         let mut sequence_length = 0;
         let mut opposing_slope_count = 0;
 
-        while self.position < self.len {
+        while self.position < self.len && chunk_len < self.sizes.max {
             self.position += 1;
             chunk_len += 1;
 
