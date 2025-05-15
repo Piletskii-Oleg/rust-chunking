@@ -51,7 +51,7 @@ impl<'a> Chunker<'a> {
         }
     }
 
-    pub fn new(buf: &'a [u8]) -> Chunker {
+    pub fn new(buf: &[u8]) -> Chunker {
         Chunker {
             buf,
             pos: 0,
@@ -127,7 +127,7 @@ impl<'a> Chunker<'a> {
     }
 }
 
-impl<'a> Iterator for Chunker<'a> {
+impl Iterator for Chunker<'_> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -14,6 +14,7 @@ Content Based Chunking algorithms implementation:
 * [UltraCDC][ultra]
 * [SuperCDC][super]
 * [SeqCDC][seq]
+* [Asymmetric Extremum][ae]
 
 Simple code to test an algorithm is provided in [filetest.rs](src/bin/filetest.rs).
 
@@ -51,3 +52,4 @@ fn main() {
 [seq]: https://dl.acm.org/doi/10.1145/3652892.3700766
 [super]: https://www.researchgate.net/publication/366434502_SuperCDC_A_Hybrid_Design_of_High-Performance_Content-Defined_Chunking_for_Fast_Deduplication
 [zbox]: https://github.com/zboxfs/zbox
+[ae]: https://ieeexplore.ieee.org/abstract/document/7524782/

@@ -1,8 +1,4 @@
-use cdc_chunkers::{
-    leap_based, rabin,
-    seq::{self, Config, OperationMode},
-    supercdc, ultra, Chunk, SizeParams,
-};
+use cdc_chunkers::{ae, leap_based, rabin, seq::{self, Config, OperationMode}, supercdc, ultra, Chunk, SizeParams};
 use clap::Parser;
 use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
@@ -35,6 +31,7 @@ fn main() {
             OperationMode::Increasing,
             Config::default(),
         )),
+        Algorithm::AE => chunk_file(ae::Chunker::new(&buf, SizeParams::new(4096, 8092, 16384)))
     };
 
     check_chunks_length(&chunks, buf.len());
@@ -166,4 +163,5 @@ pub enum Algorithm {
     Rabin,
     Super,
     Seq,
+    AE,
 }

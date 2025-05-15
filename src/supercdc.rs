@@ -158,7 +158,7 @@ impl<'a> Chunker<'a> {
     }
 }
 
-impl<'a> Iterator for Chunker<'a> {
+impl Iterator for Chunker<'_> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {

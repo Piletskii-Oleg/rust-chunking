@@ -5,6 +5,7 @@ pub mod rabin;
 pub mod seq;
 pub mod supercdc;
 pub mod ultra;
+pub mod ae;
 
 #[derive(Debug)]
 pub struct Chunk {
