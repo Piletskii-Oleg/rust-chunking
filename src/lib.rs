@@ -1,11 +1,12 @@
 use std::fmt::{Display, Formatter};
 
+pub mod ae;
 pub mod leap_based;
 pub mod rabin;
+pub mod ram;
 pub mod seq;
 pub mod supercdc;
 pub mod ultra;
-pub mod ae;
 
 #[derive(Debug)]
 pub struct Chunk {

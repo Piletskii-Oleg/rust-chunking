@@ -10,7 +10,6 @@ pub struct Chunker<'a> {
     chunk_start: usize,
     sizes: SizeParams,
     max_value: u8,
-    max_position: usize,
     window_size: usize,
 }
 impl<'a> Chunker<'a> {
@@ -22,7 +21,7 @@ impl<'a> Chunker<'a> {
         }
     }
 
-    pub fn new(buf: &'a [u8], sizes: SizeParams) -> Self {
+    pub fn new(buf: &'a [u8], sizes: SizeParams, window_size: usize) -> Self {
         Chunker {
             buf,
             len: buf.len(),
@@ -30,8 +29,7 @@ impl<'a> Chunker<'a> {
             chunk_start: 0,
             sizes,
             max_value: 0,
-            max_position: 0,
-            window_size: 32,
+            window_size,
         }
     }
 
@@ -47,20 +45,20 @@ impl<'a> Chunker<'a> {
 
         self.pos += 1;
         self.max_value = self.buf[self.pos];
-        self.max_position = self.pos;
 
         while self.pos < self.len {
-            if self.pos - self.chunk_start > self.sizes.max {
+            let len = self.pos - self.chunk_start;
+
+            if len > self.sizes.max {
                 return Some(self.pos);
             }
 
-            if self.buf[self.pos] < self.max_value {
-                if self.pos == self.max_position + self.window_size {
+            if self.buf[self.pos] >= self.max_value {
+                if len > self.window_size {
                     return Some(self.pos);
                 }
-            } else {
+
                 self.max_value = self.buf[self.pos];
-                self.max_position = self.pos;
             }
 
             self.pos += 1;
