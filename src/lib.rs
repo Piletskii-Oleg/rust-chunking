@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 pub mod ae;
+pub mod gear;
 pub mod leap_based;
 pub mod rabin;
 pub mod ram;
@@ -57,6 +58,10 @@ impl SizeParams {
 
     pub fn seq_default() -> Self {
         seq::Chunker::default_sizes()
+    }
+
+    pub fn gear_default() -> Self {
+        gear::Chunker::default_sizes()
     }
 }
 

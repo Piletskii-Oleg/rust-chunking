@@ -1,5 +1,5 @@
 use cdc_chunkers::{
-    ae, leap_based, rabin, ram,
+    ae, gear, leap_based, rabin, ram,
     seq::{self, Config, OperationMode},
     supercdc, ultra, Chunk, SizeParams,
 };
@@ -41,6 +41,7 @@ fn main() {
             SizeParams::new(4096, 8192, 16384),
             32,
         )),
+        Algorithm::Gear => chunk_file(gear::Chunker::new(&buf)),
     };
 
     check_chunks_length(&chunks, buf.len());
@@ -174,4 +175,5 @@ pub enum Algorithm {
     Seq,
     AE,
     RAM,
+    Gear,
 }
