@@ -16,7 +16,8 @@ Content Based Chunking algorithms implementation:
 * [SeqCDC][seq]
 * [Asymmetric Extremum][ae]
 * [Rapid Asymmetric Maximum][ram]
-* 
+* [GearCDC][gear]
+
 Simple code to test an algorithm is provided in [filetest.rs](src/bin/filetest.rs).
 
 ## Features
@@ -55,3 +56,4 @@ fn main() {
 [zbox]: https://github.com/zboxfs/zbox
 [ae]: https://ieeexplore.ieee.org/abstract/document/7524782/
 [ram]: https://www.sciencedirect.com/science/article/pii/S0167739X16305829
+[gear]: https://www.sciencedirect.com/science/article/pii/S0166531614000790
