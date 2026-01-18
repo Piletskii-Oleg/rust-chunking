@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 pub mod ae;
+pub mod jc;
 pub mod leap_based;
 pub mod rabin;
 pub mod ram;
@@ -57,6 +58,10 @@ impl SizeParams {
 
     pub fn seq_default() -> Self {
         seq::Chunker::default_sizes()
+    }
+
+    pub fn jc_default() -> Self {
+        jc::Chunker::default_sizes()
     }
 }
 

@@ -1,5 +1,5 @@
 use cdc_chunkers::{
-    ae, leap_based, rabin, ram,
+    ae, jc, leap_based, rabin, ram,
     seq::{self, Config, OperationMode},
     supercdc, ultra, Chunk, SizeParams,
 };
@@ -35,6 +35,7 @@ fn main() {
             OperationMode::Increasing,
             Config::default(),
         )),
+        Algorithm::JC => chunk_file(jc::Chunker::new(&buf, jc::Chunker::default_sizes())),
         Algorithm::AE => chunk_file(ae::Chunker::new(&buf, SizeParams::new(4096, 8092, 16384))),
         Algorithm::RAM => chunk_file(ram::Chunker::new(
             &buf,
@@ -174,4 +175,5 @@ pub enum Algorithm {
     Seq,
     AE,
     RAM,
+    JC,
 }
