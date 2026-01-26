@@ -29,3 +29,10 @@ cli = ["clap"]
 name = "filetest"
 required-features = ["cli"]
 
+[dev-dependencies]
+criterion = "0.5"
+rand = "0.8"
+
+[[bench]]
+name = "tttd_benchmark"
+harness = false

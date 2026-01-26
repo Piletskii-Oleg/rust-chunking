@@ -7,6 +7,7 @@ pub mod ram;
 pub mod seq;
 pub mod supercdc;
 pub mod ultra;
+pub mod tttd;
 
 #[derive(Debug)]
 pub struct Chunk {
@@ -57,6 +58,10 @@ impl SizeParams {
 
     pub fn seq_default() -> Self {
         seq::Chunker::default_sizes()
+    }
+
+    pub fn tttd_default() -> Self {
+        tttd::Chunker::default_sizes()
     }
 }
 
